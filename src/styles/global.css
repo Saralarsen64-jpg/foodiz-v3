@@ -1,0 +1,271 @@
+:root {
+  --foodiz-black: #0d0c0b;
+  --foodiz-black-soft: #171513;
+  --foodiz-gold: #c39a5c;
+  --foodiz-kraft: #b78854;
+  --foodiz-cream: #f4ead8;
+  --foodiz-beige: #dec7a1;
+  --foodiz-offwhite: #fbf6ef;
+  --foodiz-line: rgba(255, 255, 255, 0.08);
+  --foodiz-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at top right, rgba(195, 154, 92, 0.2), transparent 30%),
+    linear-gradient(180deg, #15120f 0%, #0d0c0b 100%);
+  color: var(--foodiz-offwhite);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.premium-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
+    linear-gradient(135deg, rgba(183, 136, 84, 0.08), rgba(195, 154, 92, 0.02));
+  border: 1px solid var(--foodiz-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--foodiz-shadow);
+  backdrop-filter: blur(12px);
+}
+
+.brand-mark,
+.brand-hero {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: var(--foodiz-offwhite);
+}
+
+.brand-mark {
+  font-size: 2rem;
+}
+
+.brand-hero {
+  margin: 0;
+  font-size: clamp(2.8rem, 6vw, 5rem);
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--foodiz-gold);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.muted {
+  color: rgba(251, 246, 239, 0.72);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  background: rgba(195, 154, 92, 0.12);
+  border: 1px solid rgba(195, 154, 92, 0.24);
+  color: var(--foodiz-cream);
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.status-dot--ok {
+  background: #66c27c;
+}
+
+.status-dot--warn {
+  background: var(--foodiz-gold);
+}
+
+.auth-shell,
+.landing-shell {
+  width: min(1200px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.auth-panel {
+  width: min(720px, 100%);
+  padding: 2rem;
+}
+
+.hero {
+  padding: 2rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.hero-text {
+  max-width: 52rem;
+  color: rgba(251, 246, 239, 0.8);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.hero-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.dashboard-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1.5rem;
+  width: min(1400px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 3rem;
+}
+
+.sidebar {
+  padding: 1.5rem;
+  position: sticky;
+  top: 1.5rem;
+  height: fit-content;
+}
+
+.sidebar-brand {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+}
+
+.nav-stack {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+.nav-stack a {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  color: rgba(251, 246, 239, 0.82);
+  transition: 0.2s ease;
+}
+
+.nav-stack a.active,
+.nav-stack a:hover {
+  background: rgba(195, 154, 92, 0.12);
+  border-color: rgba(195, 154, 92, 0.18);
+  color: var(--foodiz-offwhite);
+}
+
+.dashboard-content {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.topbar,
+.section-card,
+.guard-notice {
+  padding: 1.5rem;
+}
+
+.page-stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.section-card__header h2,
+.topbar h1,
+.guard-notice h3,
+.auth-panel h1 {
+  margin: 0 0 0.5rem;
+}
+
+.route-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.route-card {
+  padding: 1.25rem;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.route-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(195, 154, 92, 0.28);
+}
+
+.route-card h3 {
+  margin: 0.2rem 0 0.5rem;
+}
+
+.feature-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.6rem;
+  color: rgba(251, 246, 239, 0.82);
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin-top: 1rem;
+  padding: 0.95rem 1.25rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--foodiz-gold), var(--foodiz-kraft));
+  color: var(--foodiz-black);
+  font-weight: 700;
+}
+
+.info-row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 960px) {
+  .dashboard-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+}
