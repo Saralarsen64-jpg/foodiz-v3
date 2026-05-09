@@ -3,7 +3,7 @@ import { useAuth } from '../components/auth/AuthProvider';
 import { GuardNotice } from '../components/ui/GuardNotice';
 
 export function RoleGuard({ allowedRoles = [] }) {
-  const { isSupabaseConfigured, loading, profile } = useAuth();
+  const { isSupabaseConfigured, loading, profile, profilePending, getRoleHomePath } = useAuth();
 
   if (!isSupabaseConfigured) {
     return (
@@ -18,11 +18,24 @@ export function RoleGuard({ allowedRoles = [] }) {
   }
 
   if (loading) {
-    return <GuardNotice title="Chargement" description="Lecture du rôle utilisateur en cours." />;
+    return <GuardNotice title="Chargement" description="Lecture du rôle utilisateur Foodiz en cours." />;
   }
 
-  if (!profile?.role || !allowedRoles.includes(profile.role)) {
+  if (profilePending) {
+    return (
+      <GuardNotice
+        title="Votre profil est en cours de préparation"
+        description="Le routage par rôle sera activé automatiquement dès que votre profil Foodiz sera prêt."
+      />
+    );
+  }
+
+  if (!profile?.role) {
     return <Navigate replace to="/auth" />;
+  }
+
+  if (!allowedRoles.includes(profile.role)) {
+    return <Navigate replace to={getRoleHomePath(profile.role)} />;
   }
 
   return <Outlet />;

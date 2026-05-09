@@ -1,4 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 
 const roleLabels = {
   client: 'Client',
@@ -8,6 +9,8 @@ const roleLabels = {
 };
 
 export function DashboardLayout({ role }) {
+  const { signOut } = useAuth();
+
   return (
     <div className="dashboard-shell">
       <aside className="sidebar premium-card">
@@ -33,7 +36,12 @@ export function DashboardLayout({ role }) {
             <p className="eyebrow">Foodiz foundation</p>
             <h1>{roleLabels[role]} placeholder</h1>
           </div>
-          <span className="status-pill">Ready</span>
+          <div className="topbar-actions">
+            <span className="status-pill">Ready</span>
+            <button className="ghost-action" onClick={signOut} type="button">
+              Déconnexion
+            </button>
+          </div>
         </header>
         <Outlet />
       </main>

@@ -3,7 +3,7 @@ import { useAuth } from '../components/auth/AuthProvider';
 import { GuardNotice } from '../components/ui/GuardNotice';
 
 export function ProtectedRoute() {
-  const { isSupabaseConfigured, loading, session } = useAuth();
+  const { isSupabaseConfigured, loading, session, profilePending } = useAuth();
   const location = useLocation();
 
   if (!isSupabaseConfigured) {
@@ -19,11 +19,20 @@ export function ProtectedRoute() {
   }
 
   if (loading) {
-    return <GuardNotice title="Chargement" description="Vérification de la session en cours." />;
+    return <GuardNotice title="Chargement" description="Vérification sécurisée de la session Foodiz en cours." />;
   }
 
   if (!session) {
     return <Navigate replace state={{ from: location }} to="/auth" />;
+  }
+
+  if (profilePending) {
+    return (
+      <GuardNotice
+        title="Votre profil est en cours de préparation"
+        description="Votre compte existe bien, mais votre profil applicatif Foodiz n’est pas encore disponible. Réessayez dans quelques instants."
+      />
+    );
   }
 
   return <Outlet />;
