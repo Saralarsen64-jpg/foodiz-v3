@@ -178,8 +178,7 @@ export function AuthHomePage() {
 
       <div className="foodiz-auth-frame">
         <header className="foodiz-auth-header">
-          <div className="foodiz-auth-logo-wrap">
-            <p className="foodiz-auth-kicker">Marketplace locale premium</p>
+          <div className="foodiz-auth-hero-banner">
             <img className="foodiz-auth-logo-image" src={foodizLogo} alt="Foodiz" />
           </div>
         </header>
