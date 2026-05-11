@@ -16,6 +16,10 @@ import {
   SupportIcon,
   UserIcon,
 } from '../../components/auth/AuthIcons';
+import foodizLogo from '../../assets/foodiz-logo-official.png';
+import kraftBackground from '../../assets/auth-kraft-reference.png';
+import restaurantVisual from '../../assets/auth-card-restaurant.png';
+import courierVisual from '../../assets/auth-card-courier.png';
 
 const initialLogin = { email: '', password: '' };
 const initialSignup = { firstName: '', lastName: '', email: '', phone: '', password: '' };
@@ -164,7 +168,7 @@ export function AuthHomePage() {
   const isBusy = loading || submitting;
 
   return (
-    <div className="foodiz-auth-page">
+    <div className="foodiz-auth-page" style={{ '--foodiz-auth-bg-image': `url(${kraftBackground})` }}>
       <div className="foodiz-auth-bg" aria-hidden="true">
         <div className="foodiz-auth-bg__triangle" />
         <div className="foodiz-auth-bg__fold-shadow" />
@@ -176,8 +180,7 @@ export function AuthHomePage() {
         <header className="foodiz-auth-header">
           <div className="foodiz-auth-logo-wrap">
             <p className="foodiz-auth-kicker">Marketplace locale premium</p>
-            <div className="foodiz-auth-logo">Foodiz</div>
-            <span className="foodiz-auth-logo-underline" aria-hidden="true" />
+            <img className="foodiz-auth-logo-image" src={foodizLogo} alt="Foodiz" />
           </div>
         </header>
 
@@ -425,6 +428,7 @@ export function AuthHomePage() {
           <div className="pro-grid">
             <ProfessionalAccessCard
               variant="restaurant"
+              imageSrc={restaurantVisual}
               icon={<StoreIcon />}
               title="Restaurants & Épiciers"
               text="Faites découvrir vos meilleures offres aux clients de votre ville."
@@ -435,6 +439,7 @@ export function AuthHomePage() {
             />
             <ProfessionalAccessCard
               variant="courier"
+              imageSrc={courierVisual}
               icon={<ScooterIcon />}
               title="Livreurs"
               text="Rejoignez une expérience de livraison plus premium, plus claire, mieux pilotée."

@@ -65,7 +65,6 @@ textarea {
 
 .brand-mark,
 .brand-hero,
-.foodiz-auth-logo,
 .foodiz-auth-card h1,
 .foodiz-auth-card h2,
 .pro-card h3 {
@@ -74,8 +73,7 @@ textarea {
 }
 
 .brand-mark,
-.brand-hero,
-.foodiz-auth-logo {
+.brand-hero {
   font-style: italic;
 }
 
@@ -350,9 +348,12 @@ textarea {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.2), transparent 28%),
-    radial-gradient(circle at 14% 10%, rgba(255, 243, 221, 0.24), transparent 17%),
-    linear-gradient(180deg, #ecd9b5 0%, #ddbf93 18%, #cea170 52%, #bb8754 100%);
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 24%),
+    linear-gradient(180deg, rgba(250, 241, 223, 0.22), rgba(144, 97, 49, 0.1)),
+    var(--foodiz-auth-bg-image);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
 }
 
 .foodiz-auth-bg__triangle {
@@ -361,8 +362,9 @@ textarea {
   width: 100%;
   height: 340px;
   background:
-    linear-gradient(137deg, rgba(155, 104, 54, 0.78) 0%, rgba(185, 138, 85, 0.24) 55%, transparent 55%);
+    linear-gradient(138deg, rgba(141, 94, 51, 0.5) 0%, rgba(184, 138, 88, 0.14) 55%, transparent 55%);
   clip-path: polygon(0 0, 100% 0, 0 100%);
+  opacity: 0.9;
 }
 
 .foodiz-auth-bg__fold-shadow {
@@ -370,16 +372,16 @@ textarea {
   inset: 0 auto auto 0;
   width: 100%;
   height: 325px;
-  background: linear-gradient(142deg, rgba(82, 48, 18, 0.16), transparent 52%);
+  background: linear-gradient(145deg, rgba(65, 37, 14, 0.18), transparent 52%);
   clip-path: polygon(0 0, 100% 0, 0 100%);
   filter: blur(14px);
-  opacity: 0.92;
+  opacity: 0.9;
 }
 
 .foodiz-auth-bg__grain {
   position: absolute;
   inset: 0;
-  opacity: 0.18;
+  opacity: 0.07;
   background-image:
     radial-gradient(rgba(77, 47, 17, 0.28) 0.8px, transparent 0.8px),
     radial-gradient(rgba(255, 248, 229, 0.14) 0.7px, transparent 0.7px),
@@ -391,7 +393,7 @@ textarea {
 .foodiz-auth-bg__fibers {
   position: absolute;
   inset: 0;
-  opacity: 0.16;
+  opacity: 0.08;
   background:
     repeating-linear-gradient(16deg, rgba(131, 88, 43, 0.05) 0 2px, transparent 2px 16px),
     repeating-linear-gradient(168deg, rgba(255, 246, 226, 0.04) 0 1px, transparent 1px 19px),
@@ -404,13 +406,13 @@ textarea {
   z-index: 1;
   width: min(100%, 520px);
   margin: 0 auto;
-  padding: 0.95rem 0.85rem 2.1rem;
+  padding: 1rem 0.85rem 2.1rem;
 }
 
 .foodiz-auth-header {
   display: flex;
   justify-content: center;
-  padding: 0.55rem 0 1.2rem;
+  padding: 0.6rem 0 1.2rem;
 }
 
 .foodiz-auth-logo-wrap {
@@ -428,21 +430,11 @@ textarea {
   font-weight: 700;
 }
 
-.foodiz-auth-logo {
-  color: rgba(11, 10, 8, 0.98);
-  font-size: clamp(3.5rem, 12vw, 5.8rem);
-  line-height: 0.92;
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.2),
-    0 10px 26px rgba(87, 52, 21, 0.16);
-}
-
-.foodiz-auth-logo-underline {
-  width: 138px;
-  height: 7px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(11, 10, 8, 0.82), rgba(11, 10, 8, 0.18));
-  filter: blur(0.2px);
+.foodiz-auth-logo-image {
+  width: min(360px, 72vw);
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 12px 30px rgba(79, 47, 17, 0.12));
 }
 
 .foodiz-auth-card {
@@ -460,7 +452,7 @@ textarea {
   border-bottom-left-radius: 30px;
   border-bottom-right-radius: 30px;
   box-shadow:
-    0 30px 76px rgba(0, 0, 0, 0.35),
+    0 34px 90px rgba(0, 0, 0, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     inset 0 0 0 1px rgba(215, 179, 106, 0.05);
 }
@@ -834,227 +826,59 @@ textarea {
   position: relative;
   overflow: hidden;
   margin-top: 1rem;
-  height: 172px;
+  height: 214px;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(10, 10, 10, 0.1), rgba(10, 10, 10, 0.5));
   border: 1px solid rgba(215, 179, 106, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 24px rgba(0, 0, 0, 0.18);
 }
 
-.pro-card__visual-overlay,
-.pro-card__mist,
-.pro-card__spark,
-.pro-card__subject {
-  position: absolute;
-  pointer-events: none;
+.pro-card__image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1.01);
+}
+
+.pro-card--restaurant .pro-card__image {
+  object-position: center 58%;
+}
+
+.pro-card--courier .pro-card__image {
+  object-position: center 44%;
 }
 
 .pro-card__visual-overlay {
+  position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 26%, rgba(0, 0, 0, 0.22) 72%, rgba(0, 0, 0, 0.46) 100%);
-  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.12) 36%, rgba(0, 0, 0, 0.42) 76%, rgba(0, 0, 0, 0.62) 100%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.12), transparent 36%);
 }
 
-.pro-card__mist {
-  width: 150px;
-  height: 150px;
-  border-radius: 999px;
-  filter: blur(18px);
-  opacity: 0.72;
-}
-
-.pro-card__mist--left {
-  left: -28px;
-  bottom: -36px;
-}
-
-.pro-card__mist--right {
-  right: -12px;
-  top: -16px;
-}
-
-.pro-card__spark {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
+.pro-card__visual-sheen {
+  position: absolute;
+  inset: 0 auto auto -8%;
+  width: 45%;
+  height: 120%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02));
+  opacity: 0.08;
+  transform: rotate(8deg);
   filter: blur(1px);
-  opacity: 0.72;
-  z-index: 1;
 }
 
-.pro-card__spark--1 {
-  top: 22px;
-  left: 22px;
-}
-
-.pro-card__spark--2 {
-  top: 46px;
-  right: 30px;
-}
-
-.pro-card__spark--3 {
-  right: 92px;
-  top: 22px;
-}
-
-.pro-card__subject--one,
-.pro-card__subject--two,
-.pro-card__subject--three,
-.pro-card__subject--four {
-  transition: transform 0.24s ease;
-}
-
-.pro-card:hover .pro-card__subject--one,
-.pro-card:hover .pro-card__subject--two,
-.pro-card:hover .pro-card__subject--three,
-.pro-card:hover .pro-card__subject--four {
-  transform: translateY(-2px);
-}
-
-.pro-card--restaurant .pro-card__visual {
+.pro-card--restaurant .pro-card__visual-overlay {
   background:
-    linear-gradient(180deg, rgba(7, 7, 7, 0.14), rgba(7, 7, 7, 0.66)),
-    radial-gradient(circle at 52% 92%, rgba(255, 167, 59, 0.2), transparent 34%),
-    radial-gradient(circle at 20% 16%, rgba(145, 191, 115, 0.16), transparent 22%),
-    linear-gradient(140deg, #2c241d 0%, #120f0c 70%);
+    linear-gradient(180deg, rgba(14, 10, 8, 0.03) 0%, rgba(14, 10, 8, 0.14) 38%, rgba(10, 8, 6, 0.46) 78%, rgba(10, 8, 6, 0.68) 100%),
+    radial-gradient(circle at 24% 20%, rgba(255, 209, 120, 0.14), transparent 26%);
 }
 
-.pro-card--restaurant .pro-card__mist--left {
-  background: rgba(255, 147, 71, 0.3);
-}
-
-.pro-card--restaurant .pro-card__mist--right {
-  background: rgba(120, 184, 98, 0.18);
-}
-
-.pro-card--restaurant .pro-card__spark {
-  background: rgba(255, 216, 141, 0.8);
-}
-
-.pro-card--restaurant .pro-card__subject--one {
-  left: 16px;
-  right: 16px;
-  bottom: 15px;
-  height: 72px;
-  border-radius: 999px 999px 30px 30px;
-  background: radial-gradient(circle at 50% 40%, rgba(214, 176, 110, 0.98), rgba(108, 67, 30, 0.94));
-  box-shadow: inset 0 -12px 24px rgba(39, 24, 10, 0.48), 0 18px 30px rgba(0, 0, 0, 0.22);
-  z-index: 1;
-}
-
-.pro-card--restaurant .pro-card__subject--two {
-  left: 36px;
-  right: 36px;
-  bottom: 48px;
-  height: 48px;
-  border-radius: 999px;
+.pro-card--courier .pro-card__visual-overlay {
   background:
-    radial-gradient(circle at 24% 48%, rgba(201, 74, 54, 0.94), transparent 18%),
-    radial-gradient(circle at 40% 58%, rgba(242, 182, 64, 0.94), transparent 16%),
-    radial-gradient(circle at 58% 40%, rgba(110, 168, 79, 0.94), transparent 15%),
-    radial-gradient(circle at 75% 54%, rgba(233, 130, 74, 0.92), transparent 15%),
-    radial-gradient(circle at 51% 32%, rgba(255, 244, 230, 0.1), transparent 12%),
-    linear-gradient(180deg, rgba(95, 50, 23, 0.97), rgba(45, 24, 12, 0.98));
-  z-index: 1;
-}
-
-.pro-card--restaurant .pro-card__subject--three {
-  left: 82px;
-  top: 24px;
-  width: 102px;
-  height: 52px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 20% 50%, rgba(255, 232, 202, 0.5), transparent 22%),
-    radial-gradient(circle at 60% 40%, rgba(255, 255, 255, 0.24), transparent 16%);
-  filter: blur(9px);
-  opacity: 0.62;
-  z-index: 1;
-}
-
-.pro-card--restaurant .pro-card__subject--four {
-  left: 56px;
-  right: 56px;
-  top: 30px;
-  height: 30px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 15% 50%, rgba(121, 190, 103, 0.7), transparent 18%),
-    radial-gradient(circle at 36% 36%, rgba(121, 190, 103, 0.72), transparent 14%),
-    radial-gradient(circle at 56% 48%, rgba(121, 190, 103, 0.66), transparent 14%),
-    radial-gradient(circle at 76% 36%, rgba(121, 190, 103, 0.6), transparent 13%);
-  filter: blur(0.2px);
-  opacity: 0.88;
-  z-index: 1;
-}
-
-.pro-card--courier .pro-card__visual {
-  background:
-    linear-gradient(180deg, rgba(7, 7, 7, 0.12), rgba(7, 7, 7, 0.74)),
-    radial-gradient(circle at 24% 18%, rgba(244, 189, 96, 0.12), transparent 20%),
-    radial-gradient(circle at 82% 28%, rgba(233, 180, 86, 0.08), transparent 16%),
-    linear-gradient(135deg, #171614 0%, #0d0c0b 52%, #2b2118 100%);
-}
-
-.pro-card--courier .pro-card__mist--left {
-  background: rgba(215, 179, 106, 0.18);
-}
-
-.pro-card--courier .pro-card__mist--right {
-  background: rgba(116, 143, 191, 0.12);
-}
-
-.pro-card--courier .pro-card__spark {
-  background: rgba(244, 197, 112, 0.72);
-}
-
-.pro-card--courier .pro-card__subject--one {
-  left: 18px;
-  bottom: 22px;
-  width: 126px;
-  height: 58px;
-  border-radius: 999px 999px 28px 28px;
-  background: linear-gradient(180deg, rgba(18, 17, 14, 0.94), rgba(4, 4, 4, 0.98));
-  border: 1px solid rgba(215, 179, 106, 0.14);
-  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.22);
-  z-index: 1;
-}
-
-.pro-card--courier .pro-card__subject--two {
-  left: 112px;
-  bottom: 42px;
-  width: 80px;
-  height: 58px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(17, 16, 14, 0.96), rgba(32, 26, 19, 0.96));
-  border: 1px solid rgba(215, 179, 106, 0.28);
-  box-shadow: inset 0 -8px 18px rgba(0, 0, 0, 0.32);
-  z-index: 1;
-}
-
-.pro-card--courier .pro-card__subject--three {
-  right: 18px;
-  bottom: 18px;
-  width: 128px;
-  height: 96px;
-  border-radius: 999px 999px 24px 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 213, 135, 0.14), transparent 28%),
-    linear-gradient(180deg, rgba(24, 23, 20, 0.92), rgba(8, 8, 8, 0.98));
-  border: 1px solid rgba(215, 179, 106, 0.16);
-  opacity: 0.92;
-  z-index: 1;
-}
-
-.pro-card--courier .pro-card__subject--four {
-  right: 56px;
-  top: 26px;
-  width: 92px;
-  height: 20px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(232, 188, 99, 0.58), transparent);
-  filter: blur(1.5px);
-  opacity: 0.78;
-  z-index: 1;
+    linear-gradient(180deg, rgba(8, 8, 8, 0.05) 0%, rgba(8, 8, 8, 0.17) 42%, rgba(8, 8, 8, 0.52) 80%, rgba(8, 8, 8, 0.72) 100%),
+    radial-gradient(circle at 78% 18%, rgba(255, 204, 112, 0.12), transparent 20%);
 }
 
 .pro-section-caption {
@@ -1096,6 +920,10 @@ textarea {
     padding-top: 1.4rem;
   }
 
+  .foodiz-auth-logo-image {
+    width: min(460px, 36vw);
+  }
+
   .foodiz-auth-card {
     padding: 2.05rem 1.95rem 1.65rem;
   }
@@ -1107,6 +935,18 @@ textarea {
   .auth-grid-two,
   .pro-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pro-card__visual {
+    height: 244px;
+  }
+
+  .pro-card--restaurant .pro-card__image {
+    object-position: center 56%;
+  }
+
+  .pro-card--courier .pro-card__image {
+    object-position: center 40%;
   }
 
   .auth-footer-icons {
@@ -1126,115 +966,5 @@ textarea {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
-  }
-}
-
-/* Final premium image integration */
-.foodiz-auth-bg {
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 24%),
-    linear-gradient(180deg, rgba(250, 241, 223, 0.22), rgba(144, 97, 49, 0.1)),
-    url('https://i.imgur.com/FcEDIv7.png');
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-}
-
-.foodiz-auth-bg__triangle {
-  background:
-    linear-gradient(138deg, rgba(141, 94, 51, 0.5) 0%, rgba(184, 138, 88, 0.14) 55%, transparent 55%);
-  opacity: 0.9;
-}
-
-.foodiz-auth-bg__fold-shadow {
-  background: linear-gradient(145deg, rgba(65, 37, 14, 0.18), transparent 52%);
-  opacity: 0.9;
-}
-
-.foodiz-auth-bg__grain {
-  opacity: 0.07;
-}
-
-.foodiz-auth-bg__fibers {
-  opacity: 0.08;
-}
-
-.foodiz-auth-logo {
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.2),
-    0 12px 30px rgba(79, 47, 17, 0.12);
-}
-
-.foodiz-auth-card {
-  box-shadow:
-    0 34px 90px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(215, 179, 106, 0.05);
-}
-
-.pro-card {
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.035), transparent 24%),
-    linear-gradient(180deg, rgba(30, 26, 22, 0.98), rgba(12, 11, 9, 0.99));
-}
-
-.pro-card__visual {
-  position: relative;
-  overflow: hidden;
-  margin-top: 1rem;
-  height: 188px;
-  border-radius: 24px;
-  border: 1px solid rgba(215, 179, 106, 0.12);
-  background-size: cover;
-  background-repeat: no-repeat;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 14px 24px rgba(0, 0, 0, 0.18);
-}
-
-.pro-card__visual-overlay {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0.14) 38%, rgba(0, 0, 0, 0.46) 78%, rgba(0, 0, 0, 0.66) 100%),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.16), transparent 34%);
-}
-
-.pro-card__visual-sheen {
-  position: absolute;
-  inset: 0 auto auto -8%;
-  width: 45%;
-  height: 120%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02));
-  opacity: 0.08;
-  transform: rotate(8deg);
-  filter: blur(1px);
-}
-
-.pro-card--restaurant .pro-card__visual {
-  background-image: url('https://i.imgur.com/bTzDYf9.png');
-  background-position: center center;
-}
-
-.pro-card--restaurant .pro-card__visual-overlay {
-  background:
-    linear-gradient(180deg, rgba(14, 10, 8, 0.04) 0%, rgba(14, 10, 8, 0.18) 42%, rgba(10, 8, 6, 0.52) 78%, rgba(10, 8, 6, 0.72) 100%),
-    radial-gradient(circle at 24% 20%, rgba(255, 209, 120, 0.18), transparent 26%);
-}
-
-.pro-card--courier .pro-card__visual {
-  background-image: url('https://i.imgur.com/CUABOd0.png');
-  background-position: center center;
-}
-
-.pro-card--courier .pro-card__visual-overlay {
-  background:
-    linear-gradient(180deg, rgba(8, 8, 8, 0.06) 0%, rgba(8, 8, 8, 0.2) 46%, rgba(8, 8, 8, 0.56) 80%, rgba(8, 8, 8, 0.76) 100%),
-    radial-gradient(circle at 78% 18%, rgba(255, 204, 112, 0.15), transparent 20%);
-}
-
-@media (min-width: 720px) {
-  .pro-card__visual {
-    height: 204px;
   }
 }

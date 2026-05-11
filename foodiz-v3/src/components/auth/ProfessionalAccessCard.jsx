@@ -12,6 +12,7 @@ export function ProfessionalAccessCard({
   onPrimary,
   onSecondary,
   variant = 'restaurant',
+  imageSrc,
 }) {
   return (
     <article className={`pro-card premium-card pro-card--${variant}`}>
@@ -35,6 +36,7 @@ export function ProfessionalAccessCard({
       </div>
 
       <div className="pro-card__visual" aria-hidden="true">
+        {imageSrc ? <img className="pro-card__image" src={imageSrc} alt="" loading="lazy" /> : null}
         <span className="pro-card__visual-overlay" />
         <span className="pro-card__visual-sheen" />
       </div>
