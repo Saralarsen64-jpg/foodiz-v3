@@ -36,15 +36,7 @@ export function ProfessionalAccessCard({
 
       <div className="pro-card__visual" aria-hidden="true">
         <span className="pro-card__visual-overlay" />
-        <span className="pro-card__mist pro-card__mist--left" />
-        <span className="pro-card__mist pro-card__mist--right" />
-        <span className="pro-card__spark pro-card__spark--1" />
-        <span className="pro-card__spark pro-card__spark--2" />
-        <span className="pro-card__spark pro-card__spark--3" />
-        <span className="pro-card__subject pro-card__subject--one" />
-        <span className="pro-card__subject pro-card__subject--two" />
-        <span className="pro-card__subject pro-card__subject--three" />
-        <span className="pro-card__subject pro-card__subject--four" />
+        <span className="pro-card__visual-sheen" />
       </div>
     </article>
   );
