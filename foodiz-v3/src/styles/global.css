@@ -1,7 +1,8 @@
 :root {
   --foodiz-black: #0b0a08;
   --foodiz-black-card: #11100e;
-  --foodiz-black-soft: #1a1714;
+  --foodiz-black-soft: #171410;
+  --foodiz-black-elevated: #1c1814;
   --foodiz-gold: #d7b36a;
   --foodiz-gold-deep: #c99a45;
   --foodiz-kraft: #b88a58;
@@ -273,12 +274,26 @@ textarea {
   background: var(--foodiz-button-gradient);
   color: var(--foodiz-black);
   font-weight: 700;
-  box-shadow: 0 14px 30px rgba(201, 154, 69, 0.25);
+  box-shadow:
+    0 18px 34px rgba(180, 122, 38, 0.28),
+    inset 0 1px 0 rgba(255, 246, 219, 0.7);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.button-link:hover,
+.gold-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow:
+    0 20px 38px rgba(180, 122, 38, 0.34),
+    inset 0 1px 0 rgba(255, 246, 219, 0.76);
 }
 
 .gold-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .dark-button {
@@ -290,9 +305,17 @@ textarea {
   padding: 0.95rem 1.2rem;
   border-radius: 999px;
   border: 1px solid rgba(215, 179, 106, 0.45);
-  background: rgba(17, 16, 14, 0.84);
+  background:
+    linear-gradient(180deg, rgba(29, 25, 21, 0.98), rgba(13, 12, 10, 0.98));
   color: var(--foodiz-cream);
   font-weight: 600;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.dark-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(226, 192, 111, 0.62);
+  background: linear-gradient(180deg, rgba(35, 30, 25, 1), rgba(15, 14, 12, 1));
 }
 
 .info-row {
@@ -327,28 +350,53 @@ textarea {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 32%),
-    linear-gradient(180deg, #d9bf95 0%, #c49a6c 45%, #bb8d5b 100%);
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.2), transparent 28%),
+    radial-gradient(circle at 14% 10%, rgba(255, 243, 221, 0.24), transparent 17%),
+    linear-gradient(180deg, #ecd9b5 0%, #ddbf93 18%, #cea170 52%, #bb8754 100%);
 }
 
 .foodiz-auth-bg__triangle {
   position: absolute;
   inset: 0 auto auto 0;
   width: 100%;
-  height: 260px;
-  background: linear-gradient(135deg, rgba(167, 117, 67, 0.65) 0%, rgba(184, 138, 88, 0.18) 55%, transparent 55%);
+  height: 340px;
+  background:
+    linear-gradient(137deg, rgba(155, 104, 54, 0.78) 0%, rgba(185, 138, 85, 0.24) 55%, transparent 55%);
   clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.foodiz-auth-bg__fold-shadow {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 325px;
+  background: linear-gradient(142deg, rgba(82, 48, 18, 0.16), transparent 52%);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  filter: blur(14px);
+  opacity: 0.92;
 }
 
 .foodiz-auth-bg__grain {
   position: absolute;
   inset: 0;
-  opacity: 0.12;
+  opacity: 0.18;
   background-image:
-    radial-gradient(rgba(93, 61, 25, 0.35) 0.8px, transparent 0.8px),
-    radial-gradient(rgba(255, 255, 255, 0.16) 0.6px, transparent 0.6px);
-  background-position: 0 0, 16px 16px;
-  background-size: 18px 18px, 24px 24px;
+    radial-gradient(rgba(77, 47, 17, 0.28) 0.8px, transparent 0.8px),
+    radial-gradient(rgba(255, 248, 229, 0.14) 0.7px, transparent 0.7px),
+    repeating-linear-gradient(85deg, rgba(122, 74, 28, 0.045) 0 1px, transparent 1px 26px);
+  background-position: 0 0, 14px 12px, 0 0;
+  background-size: 18px 18px, 22px 22px, 100% 100%;
+}
+
+.foodiz-auth-bg__fibers {
+  position: absolute;
+  inset: 0;
+  opacity: 0.16;
+  background:
+    repeating-linear-gradient(16deg, rgba(131, 88, 43, 0.05) 0 2px, transparent 2px 16px),
+    repeating-linear-gradient(168deg, rgba(255, 246, 226, 0.04) 0 1px, transparent 1px 19px),
+    radial-gradient(circle at 78% 72%, rgba(124, 77, 31, 0.08), transparent 20%);
+  mix-blend-mode: multiply;
 }
 
 .foodiz-auth-frame {
@@ -356,54 +404,83 @@ textarea {
   z-index: 1;
   width: min(100%, 520px);
   margin: 0 auto;
-  padding: 1.1rem 0.8rem 2rem;
+  padding: 0.95rem 0.85rem 2.1rem;
 }
 
 .foodiz-auth-header {
   display: flex;
   justify-content: center;
-  padding: 0.5rem 0 1.15rem;
+  padding: 0.55rem 0 1.2rem;
 }
 
 .foodiz-auth-logo-wrap {
   display: grid;
   justify-items: center;
-  gap: 0.3rem;
+  gap: 0.34rem;
+}
+
+.foodiz-auth-kicker {
+  margin: 0;
+  color: rgba(11, 10, 8, 0.72);
+  font-size: 0.74rem;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  font-weight: 700;
 }
 
 .foodiz-auth-logo {
-  color: var(--foodiz-black);
-  font-size: clamp(3rem, 10vw, 4.8rem);
-  line-height: 0.95;
+  color: rgba(11, 10, 8, 0.98);
+  font-size: clamp(3.5rem, 12vw, 5.8rem);
+  line-height: 0.92;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.2),
+    0 10px 26px rgba(87, 52, 21, 0.16);
 }
 
 .foodiz-auth-logo-underline {
-  width: 110px;
-  height: 5px;
+  width: 138px;
+  height: 7px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(11, 10, 8, 0.8), rgba(11, 10, 8, 0.25));
+  background: linear-gradient(90deg, rgba(11, 10, 8, 0.82), rgba(11, 10, 8, 0.18));
+  filter: blur(0.2px);
 }
 
 .foodiz-auth-card {
   position: relative;
   overflow: hidden;
-  padding: 1.5rem 1rem 1.2rem;
+  isolation: isolate;
+  padding: 1.6rem 1rem 1.22rem;
   background:
-    linear-gradient(180deg, rgba(26, 23, 20, 0.98), rgba(11, 10, 8, 0.98)),
-    linear-gradient(135deg, rgba(215, 179, 106, 0.08), rgba(17, 16, 14, 0.1));
-  border: 1px solid rgba(215, 179, 106, 0.18);
-  border-top-left-radius: 40px;
-  border-top-right-radius: 40px;
-  border-bottom-left-radius: 28px;
-  border-bottom-right-radius: 28px;
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.045), transparent 22%),
+    radial-gradient(circle at 82% 14%, rgba(226, 192, 111, 0.08), transparent 22%),
+    linear-gradient(180deg, rgba(29, 25, 21, 0.995), rgba(11, 10, 8, 0.995));
+  border: 1px solid rgba(215, 179, 106, 0.24);
+  border-top-left-radius: 44px;
+  border-top-right-radius: 44px;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
+  box-shadow:
+    0 30px 76px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(215, 179, 106, 0.05);
 }
 
 .foodiz-auth-card::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
-  height: 110px;
-  background: linear-gradient(180deg, rgba(215, 179, 106, 0.08), transparent);
+  height: 148px;
+  background: linear-gradient(180deg, rgba(215, 179, 106, 0.09), transparent);
+  pointer-events: none;
+}
+
+.foodiz-auth-card__glow {
+  position: absolute;
+  inset: auto -18% -20% auto;
+  width: 270px;
+  height: 270px;
+  background: radial-gradient(circle, rgba(215, 179, 106, 0.12) 0%, rgba(215, 179, 106, 0.045) 38%, transparent 70%);
+  filter: blur(9px);
   pointer-events: none;
 }
 
@@ -411,66 +488,83 @@ textarea {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
 .foodiz-auth-card h1 {
   margin: 0;
-  font-size: clamp(2rem, 7vw, 2.7rem);
+  max-width: 9.5ch;
+  font-size: clamp(2.45rem, 8.8vw, 3.8rem);
   color: var(--foodiz-cream);
-  line-height: 1.08;
+  line-height: 0.98;
+  text-wrap: balance;
 }
 
 .foodiz-auth-card h2 {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.56rem;
 }
 
-.foodiz-auth-subtitle {
+.foodiz-auth-subtitle,
+.auth-form-caption,
+.pro-section-caption {
   margin: 0;
-  color: rgba(247, 232, 201, 0.74);
-  line-height: 1.6;
+  color: rgba(247, 232, 201, 0.73);
+  line-height: 1.7;
 }
 
 .auth-mode-toggle {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.55rem;
-  margin: 1.2rem 0 1rem;
+  margin: 1.3rem 0 1rem;
+  padding: 0.28rem;
+  border-radius: 999px;
+  background: rgba(247, 232, 201, 0.03);
+  border: 1px solid rgba(215, 179, 106, 0.12);
 }
 
 .auth-mode-toggle button {
-  border: 1px solid rgba(215, 179, 106, 0.18);
-  background: rgba(247, 232, 201, 0.04);
-  color: rgba(247, 232, 201, 0.82);
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(247, 232, 201, 0.74);
   border-radius: 999px;
-  padding: 0.78rem 0.6rem;
+  padding: 0.84rem 0.7rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .auth-mode-toggle button.is-active {
-  background: rgba(215, 179, 106, 0.16);
-  border-color: rgba(215, 179, 106, 0.3);
+  background: linear-gradient(180deg, rgba(215, 179, 106, 0.16), rgba(201, 154, 69, 0.11));
+  border-color: rgba(215, 179, 106, 0.22);
   color: var(--foodiz-cream);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 24px rgba(201, 154, 69, 0.08);
 }
 
 .auth-form-title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.92rem;
+}
+
+.auth-form-title-row > div {
+  display: grid;
+  gap: 0.34rem;
 }
 
 .auth-form {
   display: grid;
-  gap: 0.85rem;
+  gap: 0.96rem;
 }
 
 .auth-grid-two {
   display: grid;
-  gap: 0.85rem;
+  gap: 0.9rem;
 }
 
 .auth-field {
@@ -479,8 +573,8 @@ textarea {
 }
 
 .auth-field__label {
-  color: rgba(247, 232, 201, 0.86);
-  font-size: 0.92rem;
+  color: rgba(247, 232, 201, 0.9);
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
@@ -488,15 +582,30 @@ textarea {
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 56px;
+  min-height: 58px;
   border-radius: 999px;
-  border: 1px solid rgba(215, 179, 106, 0.32);
-  background: rgba(247, 232, 201, 0.03);
+  border: 1px solid rgba(215, 179, 106, 0.28);
+  background:
+    linear-gradient(180deg, rgba(247, 232, 201, 0.035), rgba(247, 232, 201, 0.015)),
+    rgba(255, 255, 255, 0.01);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.008),
+    0 10px 22px rgba(0, 0, 0, 0.08);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.auth-field__control:focus-within {
+  border-color: rgba(226, 192, 111, 0.58);
+  box-shadow:
+    0 0 0 4px rgba(215, 179, 106, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 24px rgba(0, 0, 0, 0.12);
 }
 
 .auth-field__icon,
 .password-toggle {
-  width: 48px;
+  width: 50px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -515,7 +624,7 @@ textarea {
 .auth-field__input {
   flex: 1;
   min-width: 0;
-  height: 54px;
+  height: 56px;
   border: 0;
   background: transparent;
   color: var(--foodiz-offwhite);
@@ -523,7 +632,7 @@ textarea {
 }
 
 .auth-field__input::placeholder {
-  color: rgba(215, 179, 106, 0.58);
+  color: rgba(215, 179, 106, 0.56);
 }
 
 .auth-field__message {
@@ -549,7 +658,7 @@ textarea {
 
 .password-toggle {
   position: absolute;
-  right: 0.35rem;
+  right: 0.3rem;
   top: 1.78rem;
   height: 48px;
   border: 0;
@@ -560,8 +669,9 @@ textarea {
 
 .auth-submit {
   width: 100%;
-  min-height: 56px;
-  margin-top: 0.2rem;
+  min-height: 58px;
+  margin-top: 0.18rem;
+  font-size: 1rem;
 }
 
 .auth-link {
@@ -575,19 +685,25 @@ textarea {
 
 .auth-link--subtle {
   justify-self: start;
-  color: rgba(247, 232, 201, 0.72);
+  color: rgba(247, 232, 201, 0.78);
   font-weight: 500;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+  text-decoration-color: rgba(215, 179, 106, 0.48);
+  text-underline-offset: 0.24rem;
 }
 
 .auth-inline-text {
   margin: 0;
-  color: rgba(247, 232, 201, 0.78);
+  color: rgba(247, 232, 201, 0.8);
 }
 
 .auth-feedback {
   display: grid;
   gap: 0.25rem;
-  padding: 0.9rem 1rem;
+  padding: 0.92rem 1rem;
   border-radius: 18px;
   margin: 0.5rem 0 0.8rem;
   font-size: 0.94rem;
@@ -617,38 +733,60 @@ textarea {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 0.8rem;
-  margin: 1.4rem 0 1rem;
+  margin: 1.6rem 0 0.9rem;
 }
 
 .pro-separator > span {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(215, 179, 106, 0.38), transparent);
+  background: linear-gradient(90deg, transparent, rgba(215, 179, 106, 0.4), transparent);
 }
 
 .pro-separator__label {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  color: rgba(247, 232, 201, 0.85);
+  color: rgba(247, 232, 201, 0.86);
   font-weight: 600;
 }
 
 .pro-grid {
   display: grid;
   gap: 0.95rem;
+  margin-top: 0.9rem;
 }
 
 .pro-card {
   position: relative;
   overflow: hidden;
   padding: 1rem;
-  background: rgba(247, 232, 201, 0.03);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.04), transparent 20%),
+    linear-gradient(180deg, rgba(30, 26, 22, 0.98), rgba(12, 11, 9, 0.99));
   border: 1px solid rgba(215, 179, 106, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 18px 34px rgba(0, 0, 0, 0.16);
+  transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+}
+
+.pro-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(226, 192, 111, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 24px 42px rgba(0, 0, 0, 0.2);
+}
+
+.pro-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
 }
 
 .pro-card__icon {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -658,38 +796,276 @@ textarea {
   border: 1px solid rgba(215, 179, 106, 0.18);
 }
 
+.pro-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(215, 179, 106, 0.08);
+  border: 1px solid rgba(215, 179, 106, 0.16);
+  color: rgba(247, 232, 201, 0.82);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .pro-card__content h3 {
-  margin: 0.75rem 0 0.35rem;
-  font-size: 1.25rem;
+  margin: 0.82rem 0 0.35rem;
+  font-size: 1.38rem;
+  line-height: 1.12;
 }
 
 .pro-card__content p {
   margin: 0;
-  color: rgba(247, 232, 201, 0.72);
-  line-height: 1.55;
+  color: rgba(247, 232, 201, 0.73);
+  line-height: 1.58;
 }
 
 .pro-card__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.7rem;
+  gap: 0.72rem;
   margin-top: 1rem;
 }
 
 .pro-card__visual {
+  position: relative;
+  overflow: hidden;
   margin-top: 1rem;
-  height: 70px;
-  border-radius: 18px;
+  height: 172px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.1), rgba(10, 10, 10, 0.5));
+  border: 1px solid rgba(215, 179, 106, 0.12);
+}
+
+.pro-card__visual-overlay,
+.pro-card__mist,
+.pro-card__spark,
+.pro-card__subject {
+  position: absolute;
+  pointer-events: none;
+}
+
+.pro-card__visual-overlay {
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 26%, rgba(0, 0, 0, 0.22) 72%, rgba(0, 0, 0, 0.46) 100%);
+  z-index: 2;
+}
+
+.pro-card__mist {
+  width: 150px;
+  height: 150px;
+  border-radius: 999px;
+  filter: blur(18px);
+  opacity: 0.72;
+}
+
+.pro-card__mist--left {
+  left: -28px;
+  bottom: -36px;
+}
+
+.pro-card__mist--right {
+  right: -12px;
+  top: -16px;
+}
+
+.pro-card__spark {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  filter: blur(1px);
+  opacity: 0.72;
+  z-index: 1;
+}
+
+.pro-card__spark--1 {
+  top: 22px;
+  left: 22px;
+}
+
+.pro-card__spark--2 {
+  top: 46px;
+  right: 30px;
+}
+
+.pro-card__spark--3 {
+  right: 92px;
+  top: 22px;
+}
+
+.pro-card__subject--one,
+.pro-card__subject--two,
+.pro-card__subject--three,
+.pro-card__subject--four {
+  transition: transform 0.24s ease;
+}
+
+.pro-card:hover .pro-card__subject--one,
+.pro-card:hover .pro-card__subject--two,
+.pro-card:hover .pro-card__subject--three,
+.pro-card:hover .pro-card__subject--four {
+  transform: translateY(-2px);
+}
+
+.pro-card--restaurant .pro-card__visual {
   background:
-    radial-gradient(circle at left, rgba(215, 179, 106, 0.14), transparent 50%),
-    linear-gradient(135deg, rgba(247, 232, 201, 0.04), rgba(184, 138, 88, 0.16));
+    linear-gradient(180deg, rgba(7, 7, 7, 0.14), rgba(7, 7, 7, 0.66)),
+    radial-gradient(circle at 52% 92%, rgba(255, 167, 59, 0.2), transparent 34%),
+    radial-gradient(circle at 20% 16%, rgba(145, 191, 115, 0.16), transparent 22%),
+    linear-gradient(140deg, #2c241d 0%, #120f0c 70%);
+}
+
+.pro-card--restaurant .pro-card__mist--left {
+  background: rgba(255, 147, 71, 0.3);
+}
+
+.pro-card--restaurant .pro-card__mist--right {
+  background: rgba(120, 184, 98, 0.18);
+}
+
+.pro-card--restaurant .pro-card__spark {
+  background: rgba(255, 216, 141, 0.8);
+}
+
+.pro-card--restaurant .pro-card__subject--one {
+  left: 16px;
+  right: 16px;
+  bottom: 15px;
+  height: 72px;
+  border-radius: 999px 999px 30px 30px;
+  background: radial-gradient(circle at 50% 40%, rgba(214, 176, 110, 0.98), rgba(108, 67, 30, 0.94));
+  box-shadow: inset 0 -12px 24px rgba(39, 24, 10, 0.48), 0 18px 30px rgba(0, 0, 0, 0.22);
+  z-index: 1;
+}
+
+.pro-card--restaurant .pro-card__subject--two {
+  left: 36px;
+  right: 36px;
+  bottom: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 24% 48%, rgba(201, 74, 54, 0.94), transparent 18%),
+    radial-gradient(circle at 40% 58%, rgba(242, 182, 64, 0.94), transparent 16%),
+    radial-gradient(circle at 58% 40%, rgba(110, 168, 79, 0.94), transparent 15%),
+    radial-gradient(circle at 75% 54%, rgba(233, 130, 74, 0.92), transparent 15%),
+    radial-gradient(circle at 51% 32%, rgba(255, 244, 230, 0.1), transparent 12%),
+    linear-gradient(180deg, rgba(95, 50, 23, 0.97), rgba(45, 24, 12, 0.98));
+  z-index: 1;
+}
+
+.pro-card--restaurant .pro-card__subject--three {
+  left: 82px;
+  top: 24px;
+  width: 102px;
+  height: 52px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(255, 232, 202, 0.5), transparent 22%),
+    radial-gradient(circle at 60% 40%, rgba(255, 255, 255, 0.24), transparent 16%);
+  filter: blur(9px);
+  opacity: 0.62;
+  z-index: 1;
+}
+
+.pro-card--restaurant .pro-card__subject--four {
+  left: 56px;
+  right: 56px;
+  top: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 15% 50%, rgba(121, 190, 103, 0.7), transparent 18%),
+    radial-gradient(circle at 36% 36%, rgba(121, 190, 103, 0.72), transparent 14%),
+    radial-gradient(circle at 56% 48%, rgba(121, 190, 103, 0.66), transparent 14%),
+    radial-gradient(circle at 76% 36%, rgba(121, 190, 103, 0.6), transparent 13%);
+  filter: blur(0.2px);
+  opacity: 0.88;
+  z-index: 1;
+}
+
+.pro-card--courier .pro-card__visual {
+  background:
+    linear-gradient(180deg, rgba(7, 7, 7, 0.12), rgba(7, 7, 7, 0.74)),
+    radial-gradient(circle at 24% 18%, rgba(244, 189, 96, 0.12), transparent 20%),
+    radial-gradient(circle at 82% 28%, rgba(233, 180, 86, 0.08), transparent 16%),
+    linear-gradient(135deg, #171614 0%, #0d0c0b 52%, #2b2118 100%);
+}
+
+.pro-card--courier .pro-card__mist--left {
+  background: rgba(215, 179, 106, 0.18);
+}
+
+.pro-card--courier .pro-card__mist--right {
+  background: rgba(116, 143, 191, 0.12);
+}
+
+.pro-card--courier .pro-card__spark {
+  background: rgba(244, 197, 112, 0.72);
+}
+
+.pro-card--courier .pro-card__subject--one {
+  left: 18px;
+  bottom: 22px;
+  width: 126px;
+  height: 58px;
+  border-radius: 999px 999px 28px 28px;
+  background: linear-gradient(180deg, rgba(18, 17, 14, 0.94), rgba(4, 4, 4, 0.98));
+  border: 1px solid rgba(215, 179, 106, 0.14);
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.22);
+  z-index: 1;
+}
+
+.pro-card--courier .pro-card__subject--two {
+  left: 112px;
+  bottom: 42px;
+  width: 80px;
+  height: 58px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(17, 16, 14, 0.96), rgba(32, 26, 19, 0.96));
+  border: 1px solid rgba(215, 179, 106, 0.28);
+  box-shadow: inset 0 -8px 18px rgba(0, 0, 0, 0.32);
+  z-index: 1;
+}
+
+.pro-card--courier .pro-card__subject--three {
+  right: 18px;
+  bottom: 18px;
+  width: 128px;
+  height: 96px;
+  border-radius: 999px 999px 24px 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 213, 135, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(24, 23, 20, 0.92), rgba(8, 8, 8, 0.98));
+  border: 1px solid rgba(215, 179, 106, 0.16);
+  opacity: 0.92;
+  z-index: 1;
+}
+
+.pro-card--courier .pro-card__subject--four {
+  right: 56px;
+  top: 26px;
+  width: 92px;
+  height: 20px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(232, 188, 99, 0.58), transparent);
+  filter: blur(1.5px);
+  opacity: 0.78;
+  z-index: 1;
+}
+
+.pro-section-caption {
+  margin-top: -0.1rem;
 }
 
 .auth-footer-icons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.9rem;
-  margin-top: 1.35rem;
+  margin-top: 1.45rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(215, 179, 106, 0.14);
 }
@@ -716,12 +1092,16 @@ textarea {
 
 @media (min-width: 720px) {
   .foodiz-auth-frame {
-    width: min(100%, 980px);
-    padding-top: 1.5rem;
+    width: min(100%, 1080px);
+    padding-top: 1.4rem;
   }
 
   .foodiz-auth-card {
-    padding: 1.9rem 1.8rem 1.5rem;
+    padding: 2.05rem 1.95rem 1.65rem;
+  }
+
+  .foodiz-auth-card h1 {
+    max-width: 11ch;
   }
 
   .auth-grid-two,

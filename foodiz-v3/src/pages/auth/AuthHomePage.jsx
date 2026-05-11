@@ -167,21 +167,25 @@ export function AuthHomePage() {
     <div className="foodiz-auth-page">
       <div className="foodiz-auth-bg" aria-hidden="true">
         <div className="foodiz-auth-bg__triangle" />
+        <div className="foodiz-auth-bg__fold-shadow" />
         <div className="foodiz-auth-bg__grain" />
+        <div className="foodiz-auth-bg__fibers" />
       </div>
 
       <div className="foodiz-auth-frame">
         <header className="foodiz-auth-header">
           <div className="foodiz-auth-logo-wrap">
+            <p className="foodiz-auth-kicker">Marketplace locale premium</p>
             <div className="foodiz-auth-logo">Foodiz</div>
             <span className="foodiz-auth-logo-underline" aria-hidden="true" />
           </div>
         </header>
 
         <section className="foodiz-auth-card premium-card">
+          <div className="foodiz-auth-card__glow" aria-hidden="true" />
           <div className="foodiz-auth-card__top">
             <p className="eyebrow">Authentification</p>
-            <h1>Envie de vous faire livrer ?</h1>
+            <h1>Envie de vous faire livrer&nbsp;?</h1>
             <p className="foodiz-auth-subtitle">
               Vos adresses préférées, vos envies du moment, livrées simplement.
             </p>
@@ -204,7 +208,7 @@ export function AuthHomePage() {
           <div className="auth-mode-toggle" role="tablist" aria-label="Mode authentification Foodiz">
             <button
               type="button"
-              className={mode === 'login' ? 'is-active' : ''}
+              className={mode === 'login' || mode === 'reset' ? 'is-active' : ''}
               onClick={() => {
                 setMode('login');
                 resetFeedback();
@@ -222,20 +226,19 @@ export function AuthHomePage() {
             >
               Inscription
             </button>
-            <button
-              type="button"
-              className={mode === 'reset' ? 'is-active' : ''}
-              onClick={() => {
-                setMode('reset');
-                resetFeedback();
-              }}
-            >
-              Reset
-            </button>
           </div>
 
           <div className="auth-form-title-row">
-            <h2>{getAuthModeTitle(mode)}</h2>
+            <div>
+              <h2>{getAuthModeTitle(mode)}</h2>
+              <p className="auth-form-caption">
+                {mode === 'signup'
+                  ? 'Créez votre accès personnel pour retrouver vos envies Foodiz en quelques secondes.'
+                  : mode === 'reset'
+                    ? 'Saisissez votre email pour recevoir un lien sécurisé et retrouver votre accès.'
+                    : 'Retrouvez vos favoris, vos adresses et vos commandes dans une expérience Foodiz premium.'}
+              </p>
+            </div>
             {isBusy ? <span className="status-pill">Chargement</span> : null}
           </div>
 
@@ -413,10 +416,15 @@ export function AuthHomePage() {
             <span />
           </div>
 
+          <p className="pro-section-caption">
+            Deux entrées dédiées pour rejoindre une expérience locale premium, lisible et plus soignée.
+          </p>
+
           {proMessage ? <div className="auth-feedback auth-feedback--info">{proMessage}</div> : null}
 
           <div className="pro-grid">
             <ProfessionalAccessCard
+              variant="restaurant"
               icon={<StoreIcon />}
               title="Restaurants & Épiciers"
               text="Faites découvrir vos meilleures offres aux clients de votre ville."
@@ -426,6 +434,7 @@ export function AuthHomePage() {
               onSecondary={() => handleProfessionalAction('login')}
             />
             <ProfessionalAccessCard
+              variant="courier"
               icon={<ScooterIcon />}
               title="Livreurs"
               text="Rejoignez une expérience de livraison plus premium, plus claire, mieux pilotée."
