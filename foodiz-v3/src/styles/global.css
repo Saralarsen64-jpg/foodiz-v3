@@ -342,16 +342,18 @@ textarea {
   min-height: 100vh;
   overflow: hidden;
   color: var(--foodiz-cream);
+  background: linear-gradient(180deg, #d9b888 0%, #ca9d6b 42%, #bb8754 100%);
 }
 
 .foodiz-auth-bg {
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto 0;
+  height: clamp(13.75rem, 58vw, 16.5rem);
   background:
     linear-gradient(180deg, rgba(248, 238, 219, 0.08), rgba(89, 56, 28, 0.08)),
     var(--foodiz-auth-bg-image);
   background-size: cover;
-  background-position: center top;
+  background-position: 50% 0%;
   background-repeat: no-repeat;
 }
 
@@ -359,7 +361,7 @@ textarea {
   position: absolute;
   inset: 0 auto auto 0;
   width: 100%;
-  height: 340px;
+  height: 100%;
   background:
     linear-gradient(138deg, rgba(141, 94, 51, 0.2) 0%, rgba(184, 138, 88, 0.06) 55%, transparent 55%);
   clip-path: polygon(0 0, 100% 0, 0 100%);
@@ -370,7 +372,7 @@ textarea {
   position: absolute;
   inset: 0 auto auto 0;
   width: 100%;
-  height: 325px;
+  height: 100%;
   background: linear-gradient(145deg, rgba(65, 37, 14, 0.1), transparent 52%);
   clip-path: polygon(0 0, 100% 0, 0 100%);
   filter: blur(14px);
@@ -403,7 +405,7 @@ textarea {
   z-index: 1;
   width: min(100%, 520px);
   margin: 0 auto;
-  padding: clamp(10.5rem, 31vw, 14rem) 0.85rem 2.1rem;
+  padding: clamp(9rem, 28vw, 11.5rem) 0.85rem 2.1rem;
 }
 
 .foodiz-auth-header {
@@ -416,28 +418,34 @@ textarea {
 .foodiz-auth-wordmark-wrap {
   display: grid;
   justify-items: center;
-  gap: 0.28rem;
-  width: min(100%, 560px);
+  gap: 0.22rem;
+  width: min(100%, 640px);
+  margin-inline: auto;
 }
 
 .foodiz-auth-wordmark {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  font-family: 'Baskerville', 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   font-style: italic;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  line-height: 0.92;
-  color: rgba(11, 10, 8, 0.98);
-  font-size: clamp(3.25rem, 15vw, 6.2rem);
+  letter-spacing: -0.03em;
+  line-height: 0.88;
+  color: rgba(11, 10, 8, 0.99);
+  font-size: clamp(3.8rem, 15.5vw, 7rem);
   text-align: center;
-  text-wrap: balance;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15), 0 10px 28px rgba(91, 55, 25, 0.1);
+  white-space: nowrap;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.1), 0 10px 24px rgba(91, 55, 25, 0.08);
 }
 
 .foodiz-auth-wordmark-underline {
-  width: min(170px, 38vw);
-  height: 6px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(11, 10, 8, 0.88), rgba(11, 10, 8, 0.18));
+  width: min(188px, 42vw);
+  height: 5px;
+  border-radius: 999px 999px 120px 120px;
+  background: linear-gradient(90deg, rgba(11, 10, 8, 0.9), rgba(11, 10, 8, 0.2));
+  transform: translateY(-2px) scaleX(1.04);
+  transform-origin: center;
+  filter: blur(0.1px);
 }
 
 .foodiz-auth-card {
@@ -918,21 +926,26 @@ textarea {
 }
 
 @media (min-width: 720px) {
+  .foodiz-auth-bg {
+    height: clamp(18rem, 29vw, 24rem);
+    background-position: 50% 4%;
+  }
+
   .foodiz-auth-frame {
     width: min(100%, 1080px);
-    padding-top: clamp(12rem, 18vw, 15.5rem);
+    padding-top: clamp(14rem, 20vw, 18rem);
   }
 
   .foodiz-auth-wordmark-wrap {
-    width: min(100%, 760px);
+    width: min(100%, 840px);
   }
 
   .foodiz-auth-wordmark {
-    font-size: clamp(4.2rem, 8vw, 7rem);
+    font-size: clamp(5rem, 8vw, 7.5rem);
   }
 
   .foodiz-auth-wordmark-underline {
-    width: min(220px, 18vw);
+    width: min(240px, 18vw);
   }
 
   .foodiz-auth-card {
