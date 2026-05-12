@@ -16,7 +16,8 @@ import {
   SupportIcon,
   UserIcon,
 } from '../../components/auth/AuthIcons';
-import authBackgroundHero from '../../assets/auth-background-hero.png';
+import authBackgroundMain from '../../assets/auth-background-main.png';
+import authTopBannerLogo from '../../assets/auth-top-banner-logo.png';
 import restaurantVisual from '../../assets/auth-card-restaurant.png';
 import courierVisual from '../../assets/auth-card-courier.png';
 
@@ -167,7 +168,7 @@ export function AuthHomePage() {
   const isBusy = loading || submitting;
 
   return (
-    <div className="foodiz-auth-page" style={{ '--foodiz-auth-bg-image': `url(${authBackgroundHero})` }}>
+    <div className="foodiz-auth-page" style={{ '--foodiz-auth-bg-image': `url(${authBackgroundMain})` }}>
       <div className="foodiz-auth-bg" aria-hidden="true">
         <div className="foodiz-auth-bg__triangle" />
         <div className="foodiz-auth-bg__fold-shadow" />
@@ -176,6 +177,10 @@ export function AuthHomePage() {
       </div>
 
       <div className="foodiz-auth-frame">
+        <header className="foodiz-auth-header">
+          <img className="foodiz-auth-top-banner-logo" src={authTopBannerLogo} alt="Foodiz" />
+        </header>
+
         <section className="foodiz-auth-card premium-card">
           <div className="foodiz-auth-card__glow" aria-hidden="true" />
           <div className="foodiz-auth-card__top">
