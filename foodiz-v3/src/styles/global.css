@@ -409,32 +409,35 @@ textarea {
 .foodiz-auth-header {
   display: flex;
   justify-content: center;
-  padding: 0.6rem 0 1.2rem;
+  align-items: flex-start;
+  padding: 0 0 1.15rem;
 }
 
-.foodiz-auth-logo-wrap {
+.foodiz-auth-wordmark-wrap {
   display: grid;
   justify-items: center;
-  gap: 0.42rem;
-  width: 100%;
+  gap: 0.28rem;
+  width: min(100%, 560px);
 }
 
-.foodiz-auth-kicker {
-  margin: 0;
-  color: rgba(11, 10, 8, 0.72);
-  font-size: 0.74rem;
-  letter-spacing: 0.19em;
-  text-transform: uppercase;
+.foodiz-auth-wordmark {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  font-style: italic;
   font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 0.92;
+  color: rgba(11, 10, 8, 0.98);
+  font-size: clamp(3.25rem, 15vw, 6.2rem);
+  text-align: center;
+  text-wrap: balance;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15), 0 10px 28px rgba(91, 55, 25, 0.1);
 }
 
-.foodiz-auth-logo-image {
-  display: block;
-  width: min(520px, 92vw);
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 12px 30px rgba(79, 47, 17, 0.12));
+.foodiz-auth-wordmark-underline {
+  width: min(170px, 38vw);
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(11, 10, 8, 0.88), rgba(11, 10, 8, 0.18));
 }
 
 .foodiz-auth-card {
@@ -920,6 +923,17 @@ textarea {
     padding-top: clamp(12rem, 18vw, 15.5rem);
   }
 
+  .foodiz-auth-wordmark-wrap {
+    width: min(100%, 760px);
+  }
+
+  .foodiz-auth-wordmark {
+    font-size: clamp(4.2rem, 8vw, 7rem);
+  }
+
+  .foodiz-auth-wordmark-underline {
+    width: min(220px, 18vw);
+  }
 
   .foodiz-auth-card {
     padding: 2.05rem 1.95rem 1.65rem;

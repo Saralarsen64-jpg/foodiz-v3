@@ -17,7 +17,6 @@ import {
   UserIcon,
 } from '../../components/auth/AuthIcons';
 import authBackgroundMain from '../../assets/auth-background-main.png';
-import authTopBannerLogo from '../../assets/auth-top-banner-logo.png';
 import restaurantVisual from '../../assets/auth-card-restaurant.png';
 import courierVisual from '../../assets/auth-card-courier.png';
 
@@ -177,8 +176,11 @@ export function AuthHomePage() {
       </div>
 
       <div className="foodiz-auth-frame">
-        <header className="foodiz-auth-header">
-          <img className="foodiz-auth-top-banner-logo" src={authTopBannerLogo} alt="Foodiz" />
+        <header className="foodiz-auth-header" aria-label="Foodiz">
+          <div className="foodiz-auth-wordmark-wrap">
+            <div className="foodiz-auth-wordmark">Foodiz</div>
+            <span className="foodiz-auth-wordmark-underline" aria-hidden="true" />
+          </div>
         </header>
 
         <section className="foodiz-auth-card premium-card">
