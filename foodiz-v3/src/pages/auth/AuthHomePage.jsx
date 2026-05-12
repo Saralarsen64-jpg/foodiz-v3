@@ -189,7 +189,7 @@ export function AuthHomePage() {
             <p className="eyebrow">Authentification</p>
             <h1>Envie de vous faire livrer&nbsp;?</h1>
             <p className="foodiz-auth-subtitle">
-              Vos adresses préférées, vos envies du moment, livrées simplement.
+              Vos adresses préférées, quand vous le souhaitez. Restaurants, épiceries et envies du moment, livrés simplement.
             </p>
           </div>
 
