@@ -23,6 +23,11 @@
   box-sizing: border-box;
 }
 
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body,
 #root {
@@ -340,7 +345,8 @@ textarea {
 .foodiz-auth-page {
   position: relative;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
   color: var(--foodiz-cream);
   background: linear-gradient(180deg, #d9b888 0%, #ca9d6b 42%, #bb8754 100%);
 }
@@ -348,7 +354,7 @@ textarea {
 .foodiz-auth-bg {
   position: absolute;
   inset: 0 0 auto 0;
-  height: clamp(13.75rem, 58vw, 16.5rem);
+  height: clamp(10.75rem, 48vw, 15rem);
   background:
     linear-gradient(180deg, rgba(248, 238, 219, 0.08), rgba(89, 56, 28, 0.08)),
     var(--foodiz-auth-bg-image);
@@ -404,8 +410,9 @@ textarea {
   position: relative;
   z-index: 1;
   width: min(100%, 520px);
+  max-width: 100%;
   margin: 0 auto;
-  padding: clamp(9rem, 28vw, 11.5rem) 0.85rem 2.1rem;
+  padding: clamp(7rem, 24vw, 10rem) clamp(0.7rem, 3.6vw, 0.95rem) 2.1rem;
 }
 
 .foodiz-auth-header {
@@ -452,7 +459,9 @@ textarea {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  padding: 1.6rem 1rem 1.22rem;
+  width: 100%;
+  max-width: 100%;
+  padding: 1.45rem 0.95rem 1.12rem;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.045), transparent 22%),
     radial-gradient(circle at 82% 14%, rgba(226, 192, 111, 0.08), transparent 22%),
@@ -563,16 +572,23 @@ textarea {
 .auth-form {
   display: grid;
   gap: 0.96rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .auth-grid-two {
   display: grid;
   gap: 0.9rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .auth-field {
   display: grid;
   gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .auth-field__label {
@@ -585,6 +601,8 @@ textarea {
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
   min-height: 58px;
   border-radius: 999px;
   border: 1px solid rgba(215, 179, 106, 0.28);
@@ -625,13 +643,14 @@ textarea {
 }
 
 .auth-field__input {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  width: 100%;
   height: 56px;
   border: 0;
   background: transparent;
   color: var(--foodiz-offwhite);
-  padding: 0 1rem 0 0;
+  padding: 0 0.95rem 0 0;
 }
 
 .auth-field__input::placeholder {
@@ -653,10 +672,12 @@ textarea {
 
 .password-wrapper {
   position: relative;
+  width: 100%;
+  min-width: 0;
 }
 
 .password-wrapper .auth-field__control {
-  padding-right: 3rem;
+  padding-right: 3.15rem;
 }
 
 .password-toggle {
@@ -675,6 +696,7 @@ textarea {
   min-height: 58px;
   margin-top: 0.18rem;
   font-size: 1rem;
+  max-width: 100%;
 }
 
 .auth-link {
@@ -927,13 +949,13 @@ textarea {
 
 @media (min-width: 720px) {
   .foodiz-auth-bg {
-    height: clamp(18rem, 29vw, 24rem);
-    background-position: 50% 4%;
+    height: clamp(16rem, 23vw, 21rem);
+    background-position: 50% 6%;
   }
 
   .foodiz-auth-frame {
     width: min(100%, 1080px);
-    padding-top: clamp(14rem, 20vw, 18rem);
+    padding-top: clamp(12rem, 16vw, 15rem);
   }
 
   .foodiz-auth-wordmark-wrap {
@@ -990,5 +1012,46 @@ textarea {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 430px) {
+  .foodiz-auth-frame {
+    padding-inline: 0.65rem;
+  }
+
+  .foodiz-auth-card {
+    padding: 1.35rem 0.82rem 1.04rem;
+    border-top-left-radius: 34px;
+    border-top-right-radius: 34px;
+    border-bottom-left-radius: 24px;
+    border-bottom-right-radius: 24px;
+  }
+
+  .auth-form-title-row {
+    gap: 0.7rem;
+  }
+
+  .auth-mode-toggle button {
+    padding-inline: 0.55rem;
+    font-size: 0.95rem;
+  }
+
+  .auth-field__control {
+    min-height: 56px;
+  }
+
+  .auth-field__icon,
+  .password-toggle {
+    width: 46px;
+  }
+
+  .auth-field__input {
+    height: 54px;
+    padding-right: 0.75rem;
+  }
+
+  .password-wrapper .auth-field__control {
+    padding-right: 2.9rem;
   }
 }
