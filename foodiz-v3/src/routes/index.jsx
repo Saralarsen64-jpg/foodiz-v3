@@ -1,10 +1,9 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { AuthLayout } from '../components/layout/AuthLayout';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { ClientLayout } from '../components/client/ClientLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RoleGuard } from './RoleGuard';
-import { HomePage } from '../pages/home/HomePage';
 import { AuthHomePage } from '../pages/auth/AuthHomePage';
 import { ClientHomePage } from '../pages/client/ClientHomePage';
 import { ClientRestaurantsPage } from '../pages/client/ClientRestaurantsPage';
@@ -20,7 +19,7 @@ import { AdminHomePage } from '../pages/admin/AdminHomePage';
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <HomePage />,
+    element: <Navigate replace to="/auth" />,
   },
   {
     path: '/auth',

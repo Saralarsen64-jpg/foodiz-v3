@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
+import { BagIcon, CartIcon, PlateIcon, ReceiptIcon, UserCircleIcon } from './ClientNavIcons';
 
 const items = [
-  { to: '/client/restaurants', label: 'Restaurants', icon: '🍽️' },
-  { to: '/client/market', label: 'Market', icon: '🛍️' },
-  { to: '/client/cart', label: 'Panier', icon: '🧺' },
-  { to: '/client/orders', label: 'Commandes', icon: '🧾' },
-  { to: '/client/account', label: 'Mon compte', icon: '👤' },
+  { to: '/client/restaurants', label: 'Restaurants', icon: <PlateIcon /> },
+  { to: '/client/market', label: 'Market', icon: <BagIcon /> },
+  { to: '/client/cart', label: 'Panier', icon: <CartIcon /> },
+  { to: '/client/orders', label: 'Commandes', icon: <ReceiptIcon /> },
+  { to: '/client/account', label: 'Mon compte', icon: <UserCircleIcon /> },
 ];
 
 export function ClientBottomNav() {

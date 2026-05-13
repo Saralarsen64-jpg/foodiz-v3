@@ -51,6 +51,18 @@ export async function fetchProductsByPartnerId(partnerId) {
   return { data: data ?? [], error };
 }
 
+export async function fetchCategories() {
+  if (!supabase) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, name, establishment_type, sort_order')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  return { data: data ?? [], error };
+}
+
 export async function fetchClientCartItems() {
   if (!supabase) return { data: [], error: null };
 
@@ -69,6 +81,17 @@ export async function fetchClientOrders() {
     .from('client_order_summary_view')
     .select('*')
     .order('placed_at', { ascending: false });
+
+  return { data: data ?? [], error };
+}
+
+export async function fetchClientOrderItems() {
+  if (!supabase) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('client_order_items_view')
+    .select('*')
+    .order('created_at', { ascending: false });
 
   return { data: data ?? [], error };
 }
@@ -104,11 +127,15 @@ export function formatPrice(cents = 0) {
   }).format((cents || 0) / 100);
 }
 
-export function groupProductsByCategory(products = []) {
+export function mapCategoryName(categoryId, categories = []) {
+  return categories.find((category) => category.id === categoryId)?.name || 'Autres';
+}
+
+export function groupProductsByCategory(products = [], categories = []) {
   return products.reduce((acc, product) => {
-    const category = product.category_id || 'Autres';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(product);
+    const categoryName = mapCategoryName(product.category_id, categories);
+    if (!acc[categoryName]) acc[categoryName] = [];
+    acc[categoryName].push(product);
     return acc;
   }, {});
 }

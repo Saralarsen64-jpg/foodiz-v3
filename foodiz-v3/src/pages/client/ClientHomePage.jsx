@@ -6,12 +6,26 @@ import { ClientSectionHeader } from '../../components/client/ClientSectionHeader
 import { PartnerCard } from '../../components/client/PartnerCard';
 import { CLIENT_CATEGORIES, fetchPartners } from '../../lib/clientApi';
 
+const quickLinks = [
+  {
+    title: 'Restaurants',
+    subtitle: 'Sélection locale soignée',
+    route: '/client/restaurants',
+  },
+  {
+    title: 'Market',
+    subtitle: 'Épiceries & essentiels',
+    route: '/client/market',
+  },
+];
+
 export function ClientHomePage() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('Restaurants');
   const [restaurants, setRestaurants] = useState([]);
   const [markets, setMarkets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -42,18 +56,54 @@ export function ClientHomePage() {
     [activeCategory, markets, restaurants]
   );
 
+  const filteredPartners = useMemo(() => {
+    if (!search.trim()) return highlightedPartners;
+    const lowered = search.toLowerCase();
+    return highlightedPartners.filter((partner) => {
+      const haystack = `${partner.display_name || ''} ${partner.description || ''} ${partner.city || ''}`.toLowerCase();
+      return haystack.includes(lowered);
+    });
+  }, [highlightedPartners, search]);
+
   return (
     <div className="client-page-stack">
-      <section className="client-hero premium-card">
-        <div>
-          <p className="eyebrow">Foodiz sélection locale</p>
-          <h2>Vos adresses préférées, quand vous le souhaitez.</h2>
+      <section className="client-home-hero premium-card">
+        <div className="client-home-hero__content">
+          <p className="eyebrow">Foodiz signature</p>
+          <h2>Vos envies locales, sélectionnées avec soin.</h2>
           <p>
-            Restaurants, épiceries et envies du moment, livrés simplement dans une expérience
-            premium signée Foodiz.
+            Explorez les meilleures adresses de votre ville, entre restaurants premium,
+            marchés de proximité et plaisirs gourmands du moment.
           </p>
         </div>
+
+        <div className="client-home-hero__search premium-card">
+          <span className="client-home-hero__search-icon" aria-hidden="true">
+            ⌕
+          </span>
+          <input
+            type="search"
+            placeholder="Rechercher une adresse, un plat ou une envie"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
       </section>
+
+      <div className="client-home-quick-grid">
+        {quickLinks.map((item) => (
+          <button
+            key={item.route}
+            type="button"
+            className="client-home-quick-card premium-card"
+            onClick={() => navigate(item.route)}
+          >
+            <span className="eyebrow">Accès rapide</span>
+            <strong>{item.title}</strong>
+            <p>{item.subtitle}</p>
+          </button>
+        ))}
+      </div>
 
       <ClientCategoryChips categories={CLIENT_CATEGORIES} activeCategory={activeCategory} onSelect={setActiveCategory} />
 
@@ -71,16 +121,16 @@ export function ClientHomePage() {
               <div key={index} className="partner-card premium-card partner-card--skeleton" />
             ))}
           </div>
-        ) : highlightedPartners.length ? (
+        ) : filteredPartners.length ? (
           <div className="client-grid client-grid--partners">
-            {highlightedPartners.map((partner) => (
+            {filteredPartners.map((partner) => (
               <PartnerCard key={partner.partner_id} partner={partner} />
             ))}
           </div>
         ) : (
           <ClientEmptyState
             title="Sélection en préparation"
-            description="Aucun établissement n’est encore visible dans cette catégorie."
+            description="Aucun établissement n’est visible dans cette catégorie ou pour cette recherche."
           />
         )}
       </section>
@@ -92,7 +142,12 @@ export function ClientHomePage() {
         />
         <div className="client-highlight-grid">
           {CLIENT_CATEGORIES.slice(2).map((category) => (
-            <button key={category} type="button" className="client-highlight-card" onClick={() => setActiveCategory(category)}>
+            <button
+              key={category}
+              type="button"
+              className="client-highlight-card"
+              onClick={() => setActiveCategory(category)}
+            >
               <span className="eyebrow">Catégorie</span>
               <strong>{category}</strong>
             </button>
