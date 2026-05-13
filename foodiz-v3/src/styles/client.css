@@ -63,7 +63,8 @@
 .client-empty-state,
 .client-list-skeleton,
 .loyalty-card,
-.partner-detail-hero {
+.partner-detail-hero,
+.client-search-bar {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.012)),
     linear-gradient(135deg, rgba(183, 136, 84, 0.08), rgba(195, 154, 92, 0.015));
@@ -90,7 +91,8 @@
 .partner-card__content h3,
 .product-card__content h3,
 .client-home-hero__content h2,
-.client-home-quick-card strong {
+.client-home-quick-card strong,
+.client-collection-hero h2 {
   margin: 0;
   font-family: Georgia, 'Times New Roman', serif;
 }
@@ -105,11 +107,15 @@
 .cart-item p,
 .address-card p,
 .client-home-hero__content p,
-.client-home-quick-card p {
+.client-home-quick-card p,
+.client-collection-hero p,
+.partner-detail-hero__content p,
+.client-collection-hero__meta {
   color: rgba(247, 232, 201, 0.72);
 }
 
-.client-home-hero {
+.client-home-hero,
+.client-collection-hero {
   display: grid;
   gap: 1rem;
   padding: 1.25rem;
@@ -119,17 +125,20 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.012));
 }
 
-.client-home-hero__content {
+.client-home-hero__content,
+.client-collection-hero > div {
   display: grid;
   gap: 0.55rem;
 }
 
-.client-home-hero__content h2 {
+.client-home-hero__content h2,
+.client-collection-hero h2 {
   font-size: clamp(2rem, 6vw, 3rem);
   line-height: 1.02;
 }
 
-.client-home-hero__search {
+.client-home-hero__search,
+.client-search-bar {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -140,7 +149,8 @@
   border: 1px solid rgba(215, 179, 106, 0.18);
 }
 
-.client-home-hero__search input {
+.client-home-hero__search input,
+.client-search-bar input {
   flex: 1;
   min-width: 0;
   border: 0;
@@ -148,11 +158,13 @@
   color: var(--foodiz-cream);
 }
 
-.client-home-hero__search input::placeholder {
+.client-home-hero__search input::placeholder,
+.client-search-bar input::placeholder {
   color: rgba(247, 232, 201, 0.54);
 }
 
-.client-home-hero__search-icon {
+.client-home-hero__search-icon,
+.client-search-bar__icon {
   color: var(--foodiz-gold);
   font-size: 1.1rem;
 }
@@ -265,7 +277,8 @@
   gap: 0.55rem;
 }
 
-.partner-card__meta {
+.partner-card__meta,
+.partner-detail-hero__meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
@@ -377,12 +390,12 @@
 .partner-detail-hero {
   position: relative;
   overflow: hidden;
-  min-height: 260px;
+  min-height: 280px;
   padding: 0;
 }
 
 .partner-detail-hero img {
-  height: 260px;
+  height: 280px;
 }
 
 .partner-detail-hero__overlay {
@@ -489,7 +502,8 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .client-home-hero {
+  .client-home-hero,
+  .client-collection-hero {
     grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
     align-items: end;
   }
