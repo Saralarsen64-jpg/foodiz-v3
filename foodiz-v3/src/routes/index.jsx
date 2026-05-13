@@ -1,11 +1,18 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AuthLayout } from '../components/layout/AuthLayout';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
+import { ClientLayout } from '../components/client/ClientLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RoleGuard } from './RoleGuard';
 import { HomePage } from '../pages/home/HomePage';
 import { AuthHomePage } from '../pages/auth/AuthHomePage';
 import { ClientHomePage } from '../pages/client/ClientHomePage';
+import { ClientRestaurantsPage } from '../pages/client/ClientRestaurantsPage';
+import { ClientMarketPage } from '../pages/client/ClientMarketPage';
+import { ClientCartPage } from '../pages/client/ClientCartPage';
+import { ClientOrdersPage } from '../pages/client/ClientOrdersPage';
+import { ClientAccountPage } from '../pages/client/ClientAccountPage';
+import { ClientEstablishmentPage } from '../pages/client/ClientEstablishmentPage';
 import { PartnerHomePage } from '../pages/partner/PartnerHomePage';
 import { CourierHomePage } from '../pages/courier/CourierHomePage';
 import { AdminHomePage } from '../pages/admin/AdminHomePage';
@@ -33,11 +40,35 @@ export const router = createBrowserRouter([
         children: [
           {
             path: '/client',
-            element: <DashboardLayout role="client" />,
+            element: <ClientLayout />,
             children: [
               {
                 index: true,
                 element: <ClientHomePage />,
+              },
+              {
+                path: 'restaurants',
+                element: <ClientRestaurantsPage />,
+              },
+              {
+                path: 'market',
+                element: <ClientMarketPage />,
+              },
+              {
+                path: 'cart',
+                element: <ClientCartPage />,
+              },
+              {
+                path: 'orders',
+                element: <ClientOrdersPage />,
+              },
+              {
+                path: 'account',
+                element: <ClientAccountPage />,
+              },
+              {
+                path: 'establishments/:partnerId',
+                element: <ClientEstablishmentPage />,
               },
             ],
           },
