@@ -101,7 +101,7 @@ export function AuthProvider({ children }) {
       setProfilePending(false);
     } else {
       setProfile(null);
-      setProfilePending(true);
+      setProfilePending(false);
     }
     setLoading(false);
   }, []);
