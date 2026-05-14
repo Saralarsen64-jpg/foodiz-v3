@@ -117,8 +117,9 @@ export function AuthHomePage() {
       return;
     }
 
-    setFormMessage('Connexion en cours…');
-    setSubmitting(false);
+   setFormMessage('Connexion réussie. Redirection…');
+setSubmitting(false);
+navigate('/client', { replace: true });
   }
 
   async function handleSignup(event) {
