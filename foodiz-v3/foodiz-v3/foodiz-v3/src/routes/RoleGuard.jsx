@@ -30,9 +30,9 @@ export function RoleGuard({ allowedRoles = [] }) {
     );
   }
 
-  if (!profile?.role) {
-    return <Navigate replace to="/auth" />;
-  }
+  iif (!profile?.role) {
+  return <Outlet />;
+}
 
   if (!allowedRoles.includes(profile.role)) {
     return <Navigate replace to={getRoleHomePath(profile.role)} />;
