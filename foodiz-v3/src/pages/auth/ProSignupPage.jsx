@@ -15,8 +15,12 @@ import authBackgroundMain from '../../assets/auth-background-main.png';
 
 /**
  * Shared signup screen for the two professional roles (partner / courier).
- * Mounted under /auth/partner and /auth/courier — the URL :role param
- * decides which copy + Supabase role gets used.
+ * Mounted under /auth/partner and /auth/courier.
+ *
+ * The role is resolved in priority order:
+ *   1. `role` prop passed directly from the router (recommended — avoids the
+ *      useParams pitfall when the route path is a static segment, not :role)
+ *   2. `useParams().role` for backwards-compat if ever mounted under /:role
  *
  * The page only collects auth-level info (identity + credentials). The
  * role-specific business data (establishment for partner, validation for
@@ -63,8 +67,17 @@ function mapSupabaseError(error) {
 
 const initialForm = { firstName: '', lastName: '', email: '', phone: '', password: '' };
 
-export function ProSignupPage() {
-  const { role } = useParams();
+/**
+ * @param {{ role?: 'partner' | 'courier' }} props
+ *   `role` can be injected directly by the router element (e.g.
+ *   `<ProSignupPage role="partner" />`). When absent, falls back to
+ *   `useParams().role` for dynamic-segment compatibility.
+ */
+export function ProSignupPage({ role: roleProp }) {
+  // roleProp takes priority; useParams() is the fallback for dynamic routes.
+  const { role: roleParam } = useParams();
+  const role = roleProp ?? roleParam;
+
   const navigate = useNavigate();
   const auth = useAuth();
   const config = ROLE_CONFIG[role];
@@ -86,24 +99,16 @@ export function ProSignupPage() {
   const isSupabaseConfigured = auth.isSupabaseConfigured;
 
   const subtitleNode = useMemo(
-    () => (config ? <p className="foodiz-auth-subtitle">{config.subtitle}</p> : null),
+    () => (config ? <p className="auth-subtitle">{config.subtitle}</p> : null),
     [config]
   );
 
   if (!config) {
     return (
-      <div className="foodiz-auth-page">
-        <div className="foodiz-auth-frame">
-          <section className="foodiz-auth-card premium-card">
-            <h1>Rôle inconnu</h1>
-            <p className="muted">
-              Cette page est réservée aux inscriptions partenaire ou livreur.
-            </p>
-            <Link className="auth-link" to="/auth">
-              Retour à l’accueil
-            </Link>
-          </section>
-        </div>
+      <div className="auth-unknown-role">
+        <h2>Rôle inconnu</h2>
+        <p>Cette page est réservée aux inscriptions partenaire ou livreur.</p>
+        <Link to="/auth">Retour à l'accueil</Link>
       </div>
     );
   }
@@ -133,130 +138,101 @@ export function ProSignupPage() {
       // Email confirmation flow: the profile + role row will be created by
       // the trigger only after the user clicks the confirmation link.
       setMessage(
-        'Compte créé. Confirmez votre email pour accéder à la suite de l’inscription Foodiz.'
+        'Compte créé. Confirmez votre email pour accéder à la suite de l\u2019inscription Foodiz.'
       );
     } else {
-      setMessage('Compte créé. Redirection en cours…');
+      setMessage('Compte créé. Redirection en cours\u2026');
     }
     setSubmitting(false);
   }
 
   return (
-    <div
-      className="foodiz-auth-page"
-      style={{ '--foodiz-auth-bg-image': `url(${authBackgroundMain})` }}
-    >
-      <div className="foodiz-auth-bg" aria-hidden="true">
-        <div className="foodiz-auth-bg__triangle" />
-        <div className="foodiz-auth-bg__fold-shadow" />
-        <div className="foodiz-auth-bg__grain" />
-        <div className="foodiz-auth-bg__fibers" />
-      </div>
+    <div className="auth-pro-signup" style={{ backgroundImage: `url(${authBackgroundMain})` }}>
+      <div className="auth-pro-signup__card">
+        <div className="auth-pro-signup__role-badge">
+          {config.icon}
+          <span>{config.label}</span>
+        </div>
 
-      <div className="foodiz-auth-frame">
-        <header className="foodiz-auth-header">
-          <div className="foodiz-auth-wordmark-wrap">
-            <div className="foodiz-auth-wordmark">Foodiz</div>
-            <span className="foodiz-auth-wordmark-underline" aria-hidden="true" />
+        <h1 className="auth-title">{config.title}</h1>
+        {subtitleNode}
+
+        {!isSupabaseConfigured ? (
+          <div className="auth-warning">
+            <strong>Configuration locale incomplète.</strong> {auth.supabaseConfigError}
           </div>
-        </header>
+        ) : null}
 
-        <section className="foodiz-auth-card premium-card">
-          <div className="foodiz-auth-card__top">
-            <p className="eyebrow">
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <ChefHatIcon /> {config.label}
-              </span>
-            </p>
-            <h1>{config.title}</h1>
-            {subtitleNode}
-          </div>
+        {error ? <p className="auth-error">{error}</p> : null}
+        {message ? (
+          <p className="auth-success">{message}</p>
+        ) : null}
 
-          {!isSupabaseConfigured ? (
-            <div className="auth-feedback auth-feedback--warning">
-              <strong>Configuration locale incomplète.</strong>
-              <span>{auth.supabaseConfigError}</span>
-            </div>
-          ) : null}
-
-          {error ? <div className="auth-feedback auth-feedback--error">{error}</div> : null}
-          {message ? (
-            <div className="auth-feedback auth-feedback--success">{message}</div>
-          ) : null}
-
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="auth-grid-two">
-              <AuthField
-                icon={<UserIcon />}
-                label="Prénom"
-                type="text"
-                name="firstName"
-                placeholder="Lina"
-                autoComplete="given-name"
-                value={form.firstName}
-                onChange={(e) => setForm((c) => ({ ...c, firstName: e.target.value }))}
-                required
-              />
-              <AuthField
-                icon={<UserIcon />}
-                label="Nom"
-                type="text"
-                name="lastName"
-                placeholder="Martin"
-                autoComplete="family-name"
-                value={form.lastName}
-                onChange={(e) => setForm((c) => ({ ...c, lastName: e.target.value }))}
-                required
-              />
-            </div>
-
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="auth-row">
             <AuthField
-              icon={<MailIcon />}
-              label="Email professionnel"
-              type="email"
-              name="email"
-              placeholder="contact@mon-etablissement.fr"
-              autoComplete="email"
-              value={form.email}
-              onChange={(e) => setForm((c) => ({ ...c, email: e.target.value }))}
+              icon={<UserIcon />}
+              label="Prénom"
+              type="text"
+              name="firstName"
+              placeholder="Lina"
+              autoComplete="given-name"
+              value={form.firstName}
+              onChange={(e) => setForm((c) => ({ ...c, firstName: e.target.value }))}
               required
             />
-
             <AuthField
-              icon={<PhoneIcon />}
-              label="Téléphone"
-              type="tel"
-              name="phone"
-              placeholder="06 00 00 00 00"
-              autoComplete="tel"
-              value={form.phone}
-              onChange={(e) => setForm((c) => ({ ...c, phone: e.target.value }))}
-              required={config.needsPhone}
+              icon={<UserIcon />}
+              label="Nom"
+              type="text"
+              name="lastName"
+              placeholder="Martin"
+              autoComplete="family-name"
+              value={form.lastName}
+              onChange={(e) => setForm((c) => ({ ...c, lastName: e.target.value }))}
+              required
             />
+          </div>
 
-            <PasswordField
-              label="Mot de passe"
-              value={form.password}
-              onChange={(e) => setForm((c) => ({ ...c, password: e.target.value }))}
-              name="new-password"
-            />
+          <AuthField
+            icon={<MailIcon />}
+            label="Email professionnel"
+            type="email"
+            name="email"
+            placeholder="contact@mon-etablissement.fr"
+            autoComplete="email"
+            value={form.email}
+            onChange={(e) => setForm((c) => ({ ...c, email: e.target.value }))}
+            required
+          />
 
-            <button
-              className="gold-button auth-submit"
-              type="submit"
-              disabled={submitting || !isSupabaseConfigured}
-            >
-              {config.cta}
-            </button>
+          <AuthField
+            icon={<PhoneIcon />}
+            label="Téléphone"
+            type="tel"
+            name="phone"
+            placeholder="06 00 00 00 00"
+            autoComplete="tel"
+            value={form.phone}
+            onChange={(e) => setForm((c) => ({ ...c, phone: e.target.value }))}
+            required={config.needsPhone}
+          />
 
-            <p className="auth-inline-text">
-              J’ai déjà un compte{' '}
-              <Link className="auth-link" to="/auth">
-                Me connecter
-              </Link>
-            </p>
-          </form>
-        </section>
+          <PasswordField
+            value={form.password}
+            onChange={(e) => setForm((c) => ({ ...c, password: e.target.value }))}
+            name="new-password"
+          />
+
+          <button type="submit" className="auth-btn-primary" disabled={submitting}>
+            {config.cta}
+          </button>
+        </form>
+
+        <p className="auth-footer-link">
+          J&apos;ai déjà un compte{' '}
+          <Link to="/auth">Me connecter</Link>
+        </p>
       </div>
     </div>
   );

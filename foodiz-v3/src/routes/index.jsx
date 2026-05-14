@@ -32,9 +32,10 @@ export const router = createBrowserRouter([
       { index: true, element: <AuthHomePage /> },
       // Public role-specific signup screens. They do NOT live behind
       // ProtectedRoute because the user is signing up — they obviously have
-      // no session yet. The :role param is restricted at the page level.
-      { path: 'partner', element: <ProSignupPage /> },
-      { path: 'courier', element: <ProSignupPage /> },
+      // no session yet. The role prop is passed explicitly so ProSignupPage
+      // can resolve its config even though the path segment is not a :param.
+      { path: 'partner', element: <ProSignupPage role="partner" /> },
+      { path: 'courier', element: <ProSignupPage role="courier" /> },
       // Password recovery landing. This route handles its own session/recovery
       // logic (Supabase emits PASSWORD_RECOVERY before any redirect happens),
       // so it stays outside ProtectedRoute as well.
