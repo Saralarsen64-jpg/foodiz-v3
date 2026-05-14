@@ -30,7 +30,7 @@ export function RoleGuard({ allowedRoles = [] }) {
     );
   }
 
-  iif (!profile?.role) {
+  if (!profile?.role) {
   return <Outlet />;
 }
 
