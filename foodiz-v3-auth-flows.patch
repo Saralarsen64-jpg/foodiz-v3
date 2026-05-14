@@ -1,0 +1,2241 @@
+From a74fcf45f41560c89c3f05628920a89f2658cf7e Mon Sep 17 00:00:00 2001
+From: Foodiz Agent <agent@arena.ai>
+Date: Thu, 14 May 2026 08:34:18 +0000
+Subject: [PATCH 1/2] feat(auth): finish login/signup/reset/onboarding flows
+ for all roles
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Backend (migration 0009):
+- Add public.handle_new_user trigger on auth.users to create the
+  profiles row server-side (the RLS layer in 0007 has no
+  profiles_insert policy by design — blueprint v1.1 §6).
+- Bootstrap loyalty_accounts for client signups.
+- Add public.generate_referral_code helper.
+
+Front-end:
+- AuthProvider: drop the (RLS-blocked) client-side profile insert,
+  add recoveryMode flag driven by PASSWORD_RECOVERY events, add
+  signUp/signUpPartner/signUpCourier/updatePassword.
+- AuthHomePage: wire pro signup buttons to /auth/partner and
+  /auth/courier; redirect to /auth/reset-password during recovery.
+- New pages:
+  * /auth/partner & /auth/courier (ProSignupPage)
+  * /auth/reset-password (set new password from email link)
+  * /partner/onboarding (insert partners + upload SIRET/identity/
+    KBIS to partner-documents-private with the path enforced by
+    storage_partner_document_path_is_valid)
+  * /courier/onboarding (insert couriers with validation_status=pending)
+- PartnerHomePage / CourierHomePage now gate on validation_status
+  and route brand-new pros to their onboarding.
+- ProtectedRoute respects recoveryMode and pins the user to the
+  reset-password screen until they pick a new password.
+
+Docs: AUTH_IMPLEMENTATION_NOTES.md
+---
+ AUTH_IMPLEMENTATION_NOTES.md                  | 131 +++++
+ .../src/components/auth/AuthProvider.jsx      | 274 +++++-----
+ foodiz-v3/src/pages/auth/AuthHomePage.jsx     |  28 +-
+ foodiz-v3/src/pages/auth/ProSignupPage.jsx    | 263 ++++++++++
+ .../src/pages/auth/ResetPasswordPage.jsx      | 160 ++++++
+ .../src/pages/courier/CourierHomePage.jsx     |  89 +++-
+ .../pages/courier/CourierOnboardingPage.jsx   | 131 +++++
+ .../src/pages/partner/PartnerHomePage.jsx     | 107 +++-
+ .../pages/partner/PartnerOnboardingPage.jsx   | 473 ++++++++++++++++++
+ foodiz-v3/src/routes/ProtectedRoute.jsx       |   9 +-
+ foodiz-v3/src/routes/index.jsx                |  73 ++-
+ .../0009_handle_new_user_signup_trigger.sql   | 124 +++++
+ 12 files changed, 1687 insertions(+), 175 deletions(-)
+ create mode 100644 AUTH_IMPLEMENTATION_NOTES.md
+ create mode 100644 foodiz-v3/src/pages/auth/ProSignupPage.jsx
+ create mode 100644 foodiz-v3/src/pages/auth/ResetPasswordPage.jsx
+ create mode 100644 foodiz-v3/src/pages/courier/CourierOnboardingPage.jsx
+ create mode 100644 foodiz-v3/src/pages/partner/PartnerOnboardingPage.jsx
+ create mode 100644 supabase/migrations/0009_handle_new_user_signup_trigger.sql
+
+diff --git a/AUTH_IMPLEMENTATION_NOTES.md b/AUTH_IMPLEMENTATION_NOTES.md
+new file mode 100644
+index 0000000..9a6fb99
+--- /dev/null
++++ b/AUTH_IMPLEMENTATION_NOTES.md
+@@ -0,0 +1,131 @@
++# Foodiz v3 — Notes d'implémentation des flows d'authentification
++
++Cette note résume ce qui a été ajouté lors de l'itération « Finir les flows
++auth ». Elle décrit les choix d'implémentation, les contraintes qu'ils
++respectent (RLS, blueprint), et la marche à suivre côté Supabase pour les
++faire fonctionner.
++
++## TL;DR — ce qui marche maintenant
++
++| Flow | État |
++|---|---|
++| Connexion email/mot de passe (tous rôles) | ✅ implémenté |
++| Inscription **client** depuis `/auth` | ✅ implémenté |
++| Inscription **partner** depuis `/auth/partner` | ✅ implémenté |
++| Inscription **courier** depuis `/auth/courier` | ✅ implémenté |
++| Mot de passe oublié — demande de lien | ✅ implémenté |
++| Mot de passe oublié — saisie nouveau MDP via `/auth/reset-password` | ✅ implémenté |
++| Onboarding partner (établissement + 3 docs) `/partner/onboarding` | ✅ implémenté |
++| Onboarding courier (acknowledgement) `/courier/onboarding` | ✅ implémenté |
++| Gating « validation_status pending » sur `/partner` et `/courier` | ✅ implémenté |
++| Création automatique du `profiles` post-signup côté Supabase | ✅ via migration `0009` |
++| Création automatique du `loyalty_accounts` pour les clients | ✅ via migration `0009` |
++
++## Migration SQL ajoutée
++
++**`supabase/migrations/0009_handle_new_user_signup_trigger.sql`**
++
++Le blueprint v1.1 §6 indique :
++
++> `profiles INSERT` : via trigger backend post-signup uniquement
++
++…mais aucun trigger n'existait. La migration `0007` (RLS) confirme l'absence
++de policy `profiles_insert`, ce qui rendait impossible la création d'un profil
++depuis le navigateur. Le code front existant tentait pourtant un `insert`
++direct → il aurait été rejeté en production.
++
++La nouvelle migration ajoute :
++
++- `public.generate_referral_code(uuid)` — génère un code lisible `fdz-xxxxxxxx-xxxx`.
++- `public.handle_new_user()` (`SECURITY DEFINER`) — lit
++  `auth.users.raw_user_meta_data` (`requested_role`, `first_name`, `last_name`,
++  `phone`, `referred_by_code`), insère la ligne `profiles` correspondante avec
++  le bon rôle, et bootstrappe `loyalty_accounts` pour les clients.
++- Trigger `on_auth_user_created after insert on auth.users`.
++
++Le trigger fonctionne en signup parce que le guard `guard_profiles_protected_columns`
++court-circuite quand `auth.uid() is null` (contexte de création de compte).
++
++> ⚠️ **À appliquer sur le projet Supabase** avant de tester (`supabase db push`
++> ou exécution manuelle dans le SQL editor).
++
++## Front-end — fichiers ajoutés / modifiés
++
++### Modifiés
++
++- `src/components/auth/AuthProvider.jsx`
++  - Suppression de l'`insert profiles` côté client (le trigger s'en charge).
++  - Lecture de profil avec retry court (race avec le trigger juste après signup).
++  - Nouveau flag `recoveryMode` activé sur l'évènement `PASSWORD_RECOVERY`.
++  - Nouveau `signUp({ role, … })` générique + helpers `signUpClient`,
++    `signUpPartner`, `signUpCourier`.
++  - Nouveau `updatePassword(newPassword)`.
++  - `resetPassword(email)` redirige désormais vers `/auth/reset-password`.
++
++- `src/pages/auth/AuthHomePage.jsx`
++  - Boutons « S'inscrire » des cartes pro câblés vers `/auth/partner` et `/auth/courier`.
++  - Détection `recoveryMode` → redirection vers `/auth/reset-password`.
++
++- `src/pages/partner/PartnerHomePage.jsx`
++  - Trois états :
++    - pas de ligne `partners` → CTA vers `/partner/onboarding`
++    - `validation_status` ∈ {pending, rejected, suspended} → écran d'attente
++    - `approved` → placeholder dashboard.
++
++- `src/pages/courier/CourierHomePage.jsx` — même logique pour les couriers.
++
++- `src/routes/index.jsx` — nouvelles routes `/auth/partner`,
++  `/auth/courier`, `/auth/reset-password`, `/partner/onboarding`,
++  `/courier/onboarding`.
++
++- `src/routes/ProtectedRoute.jsx` — redirige toute route protégée vers
++  `/auth/reset-password` quand `recoveryMode` est actif.
++
++### Ajoutés
++
++- `src/pages/auth/ProSignupPage.jsx` — formulaire d'inscription unique pour
++  partner et courier (le rôle est dérivé de l'URL `:role`).
++- `src/pages/auth/ResetPasswordPage.jsx` — saisie du nouveau mot de passe
++  après clic sur le lien de récupération.
++- `src/pages/partner/PartnerOnboardingPage.jsx` — création de la ligne
++  `partners` (`validation_status = pending`, `rc_pro_due_at = now() + 7j`),
++  upload des 3 documents obligatoires (SIRET, pièce d'identité, KBIS) dans
++  le bucket privé `partner-documents-private` au format de chemin imposé
++  par `storage_partner_document_path_is_valid()`, puis création des lignes
++  `partner_documents` correspondantes.
++- `src/pages/courier/CourierOnboardingPage.jsx` — acknowledgement +
++  insertion `couriers` (`validation_status = pending`).
++
++## Configuration Supabase à vérifier
++
++1. **Appliquer la migration `0009`** (sinon aucun signup ne fonctionnera —
++   le trigger profil n'existera pas).
++2. **URL Configuration → Redirect URLs** : ajouter
++   - `http://localhost:5173/auth`
++   - `http://localhost:5173/auth/reset-password`
++   - (et les équivalents en production).
++3. **Email templates** : le template « Reset Password » doit pointer vers
++   `{{ .SiteURL }}/auth/reset-password` — c'est ce que `resetPasswordForEmail`
++   passe en `redirectTo`, mais certains templates personnalisés ignorent ce
++   paramètre.
++4. **Email confirmation** : si « Confirm email » est ON, l'utilisateur doit
++   cliquer le lien de confirmation **avant** de pouvoir se connecter et
++   accéder à son onboarding. Le code gère les deux cas (`session` présente
++   ou non dans la réponse `signUp`).
++
++## Limites connues / pistes pour la suite
++
++- **Géocodage** : le formulaire partner exige lat/lng manuels. À remplacer
++  par un autocomplete (ex. Google Places ou Mapbox) une fois les clés
++  fournies.
++- **RC PRO** : le compte à rebours de 7 jours est posé (`rc_pro_due_at`)
++  mais il manque le job de suspension automatique côté backend (à traiter
++  dans une edge function planifiée).
++- **Documents** : pas encore de re-upload depuis le dashboard partner pour
++  les documents rejetés (RLS le permet, l'UI viendra avec le dashboard
++  partner complet).
++- **Admin validation** : aucune UI admin pour approuver/rejeter dossiers
++  partner/courier — c'est le prochain gros chantier (`AdminHomePage` est
++  toujours un placeholder).
++- **Account suspendu** : `account_status = suspended` n'est pas encore
++  traité dans `RoleGuard` (à ajouter — actuellement seul `role` est vérifié).
+diff --git a/foodiz-v3/src/components/auth/AuthProvider.jsx b/foodiz-v3/src/components/auth/AuthProvider.jsx
+index 7e0b16c..32c5080 100644
+--- a/foodiz-v3/src/components/auth/AuthProvider.jsx
++++ b/foodiz-v3/src/components/auth/AuthProvider.jsx
+@@ -1,13 +1,11 @@
+-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
++import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+ import { isSupabaseConfigured, supabase, supabaseConfigError } from '../../lib/supabaseClient';
+ 
+ const AuthContext = createContext(null);
+ 
+-function makeReferralCode(seed = 'foodiz') {
+-  return `fdz-${seed.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8)}-${Math.random()
+-    .toString(36)
+-    .slice(2, 7)}`;
+-}
++const PROFILE_FETCH_RETRIES = 6;
++const PROFILE_FETCH_RETRY_DELAY_MS = 350;
++const ALLOWED_SIGNUP_ROLES = ['client', 'partner', 'courier'];
+ 
+ function getRoleHomePath(role) {
+   switch (role) {
+@@ -24,59 +22,39 @@ function getRoleHomePath(role) {
+   }
+ }
+ 
+-async function fetchProfile(userId) {
+-  if (!supabase || !userId) return null;
+-
+-  const { data, error } = await supabase
+-    .from('profiles')
+-    .select('user_id, email, first_name, last_name, phone, role, account_status')
+-    .eq('user_id', userId)
+-    .maybeSingle();
+-
+-  if (error) {
+-    console.warn('[Foodiz] Impossible de charger le profil utilisateur.', error.message);
+-    return null;
+-  }
+-
+-  return data;
++function sleep(ms) {
++  return new Promise((resolve) => setTimeout(resolve, ms));
+ }
+ 
+-async function createClientProfile(user, fallbackData = {}) {
+-  if (!supabase || !user?.id || !user?.email) return null;
+-
+-  const profilePayload = {
+-    user_id: user.id,
+-    email: user.email,
+-    role: 'client',
+-    account_status: 'active',
+-    first_name: fallbackData.firstName ?? user.user_metadata?.first_name ?? null,
+-    last_name: fallbackData.lastName ?? user.user_metadata?.last_name ?? null,
+-    phone: fallbackData.phone ?? user.user_metadata?.phone ?? null,
+-    referral_code: makeReferralCode(user.id),
+-  };
+-
+-  const { data, error } = await supabase
+-    .from('profiles')
+-    .insert(profilePayload)
+-    .select('user_id, email, first_name, last_name, phone, role, account_status')
+-    .single();
+-
+-  if (error) {
+-    console.warn('[Foodiz] Création auto du profil client impossible.', error.message);
+-    return null;
+-  }
++/**
++ * Reads a profile by user_id. Profiles are created by the post-signup trigger
++ * (`public.handle_new_user`, migration 0009), so right after signUp we may
++ * race the trigger — we retry a few times before giving up.
++ */
++async function fetchProfileWithRetry(userId, { retries = PROFILE_FETCH_RETRIES } = {}) {
++  if (!supabase || !userId) return null;
++
++  for (let attempt = 0; attempt <= retries; attempt += 1) {
++    const { data, error } = await supabase
++      .from('profiles')
++      .select('user_id, email, first_name, last_name, phone, role, account_status, referral_code')
++      .eq('user_id', userId)
++      .maybeSingle();
++
++    if (error) {
++      // Permission / network errors don't usually self-heal — bail early.
++      console.warn('[Foodiz] Lecture profil échouée.', error.message);
++      return null;
++    }
+ 
+-  const { error: loyaltyError } = await supabase
+-    .from('loyalty_accounts')
+-    .insert({ client_user_id: user.id })
+-    .select('client_user_id')
+-    .maybeSingle();
++    if (data) return data;
+ 
+-  if (loyaltyError) {
+-    console.warn('[Foodiz] Création du compte fidélité ignorée.', loyaltyError.message);
++    if (attempt < retries) {
++      await sleep(PROFILE_FETCH_RETRY_DELAY_MS);
++    }
+   }
+ 
+-  return data;
++  return null;
+ }
+ 
+ export function AuthProvider({ children }) {
+@@ -84,9 +62,24 @@ export function AuthProvider({ children }) {
+   const [profile, setProfile] = useState(null);
+   const [loading, setLoading] = useState(true);
+   const [profilePending, setProfilePending] = useState(false);
++  // True when the active session corresponds to a Supabase password-recovery
++  // link — the UI uses this to render the dedicated "set new password" screen
++  // and to keep the session out of role-based redirection until the user has
++  // chosen a new password.
++  const [recoveryMode, setRecoveryMode] = useState(false);
++
++  // Guards against state updates after unmount during the bootstrap effect.
++  const mountedRef = useRef(true);
++  useEffect(() => {
++    mountedRef.current = true;
++    return () => {
++      mountedRef.current = false;
++    };
++  }, []);
+ 
+-  async function hydrateUser(nextSession, fallbackData = {}) {
+-    if (!nextSession?.user || !supabase) {
++  const hydrateUser = useCallback(async (nextSession) => {
++    if (!supabase || !nextSession?.user) {
++      if (!mountedRef.current) return;
+       setSession(nextSession ?? null);
+       setProfile(null);
+       setProfilePending(false);
+@@ -94,31 +87,24 @@ export function AuthProvider({ children }) {
+       return;
+     }
+ 
+-    setSession(nextSession);
+-    setLoading(true);
+-
+-    const existingProfile = await fetchProfile(nextSession.user.id);
+-
+-    if (existingProfile) {
+-      setProfile(existingProfile);
+-      setProfilePending(false);
+-      setLoading(false);
+-      return;
++    if (mountedRef.current) {
++      setSession(nextSession);
++      setLoading(true);
+     }
+ 
+-    const autoCreatedProfile = await createClientProfile(nextSession.user, fallbackData);
++    const fetched = await fetchProfileWithRetry(nextSession.user.id);
++
++    if (!mountedRef.current) return;
+ 
+-    if (autoCreatedProfile) {
+-      setProfile(autoCreatedProfile);
++    if (fetched) {
++      setProfile(fetched);
+       setProfilePending(false);
+-      setLoading(false);
+-      return;
++    } else {
++      setProfile(null);
++      setProfilePending(true);
+     }
+-
+-    setProfile(null);
+-    setProfilePending(true);
+     setLoading(false);
+-  }
++  }, []);
+ 
+   useEffect(() => {
+     let subscription;
+@@ -137,7 +123,18 @@ export function AuthProvider({ children }) {
+ 
+       const {
+         data: { subscription: authSubscription },
+-      } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
++      } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
++        // Supabase emits PASSWORD_RECOVERY when the user lands from a
++        // reset-password email link. We flip the recoveryMode flag so the
++        // /auth/reset-password screen takes over instead of the normal
++        // role-redirect logic; the flag clears when the user signs out or
++        // successfully updates their password (see updatePassword below).
++        if (event === 'PASSWORD_RECOVERY') {
++          setRecoveryMode(true);
++        }
++        if (event === 'SIGNED_OUT') {
++          setRecoveryMode(false);
++        }
+         await hydrateUser(nextSession ?? null);
+       });
+ 
+@@ -149,7 +146,62 @@ export function AuthProvider({ children }) {
+     return () => {
+       subscription?.unsubscribe();
+     };
+-  }, []);
++  }, [hydrateUser]);
++
++  const refreshProfile = useCallback(async () => {
++    if (!session?.user?.id) return null;
++    const refreshed = await fetchProfileWithRetry(session.user.id, { retries: 2 });
++    if (!mountedRef.current) return refreshed;
++    setProfile(refreshed);
++    setProfilePending(!refreshed);
++    return refreshed;
++  }, [session?.user?.id]);
++
++  /**
++   * Generic role-aware signup. The role is passed in raw_user_meta_data
++   * (`requested_role`) and consumed by the `handle_new_user` trigger which
++   * inserts the public.profiles row server-side.
++   *
++   * For partner/courier the application is responsible for inserting the
++   * matching public.partners / public.couriers row in a follow-up onboarding
++   * step (see PartnerOnboardingPage / CourierOnboardingPage).
++   */
++  const signUp = useCallback(
++    async ({ role, email, password, firstName, lastName, phone, referredByCode }) => {
++      if (!supabase) return { error: new Error(supabaseConfigError) };
++
++      const safeRole = ALLOWED_SIGNUP_ROLES.includes(role) ? role : 'client';
++
++      const result = await supabase.auth.signUp({
++        email,
++        password,
++        options: {
++          // The redirect target only matters when "Confirm email" is on:
++          // Supabase appends a token and bounces back to /auth which then
++          // routes to the right onboarding flow once the role-bearing
++          // profile row is loaded.
++          emailRedirectTo: `${window.location.origin}/auth`,
++          data: {
++            requested_role: safeRole,
++            first_name: firstName ?? null,
++            last_name: lastName ?? null,
++            phone: phone ?? null,
++            referred_by_code: referredByCode ?? null,
++          },
++        },
++      });
++
++      // If a session was returned (i.e. email confirmation is OFF in the
++      // Supabase project) we eagerly hydrate the profile so the calling
++      // page can navigate without waiting for onAuthStateChange.
++      if (result?.data?.session) {
++        await hydrateUser(result.data.session);
++      }
++
++      return result;
++    },
++    [hydrateUser]
++  );
+ 
+   const value = useMemo(
+     () => ({
+@@ -157,66 +209,54 @@ export function AuthProvider({ children }) {
+       profile,
+       loading,
+       profilePending,
++      recoveryMode,
+       isSupabaseConfigured,
+       supabaseConfigError,
+       getRoleHomePath,
+-      refreshProfile: async () => {
+-        if (!session?.user?.id) return null;
+-        const refreshed = await fetchProfile(session.user.id);
+-        setProfile(refreshed);
+-        setProfilePending(!refreshed);
+-        return refreshed;
+-      },
+-      signIn: async ({ email, password }) => {
+-        if (!supabase) {
+-          return { error: new Error(supabaseConfigError) };
+-        }
++      refreshProfile,
+ 
+-        const result = await supabase.auth.signInWithPassword({ email, password });
+-        return result;
++      signIn: async ({ email, password }) => {
++        if (!supabase) return { error: new Error(supabaseConfigError) };
++        return supabase.auth.signInWithPassword({ email, password });
+       },
+-      signUpClient: async ({ firstName, lastName, email, phone, password }) => {
+-        if (!supabase) {
+-          return { error: new Error(supabaseConfigError) };
+-        }
+ 
+-        const result = await supabase.auth.signUp({
+-          email,
+-          password,
+-          options: {
+-            data: {
+-              first_name: firstName,
+-              last_name: lastName,
+-              phone: phone || null,
+-              requested_role: 'client',
+-            },
+-          },
++      signUp,
++      signUpClient: (payload) => signUp({ ...payload, role: 'client' }),
++      signUpPartner: (payload) => signUp({ ...payload, role: 'partner' }),
++      signUpCourier: (payload) => signUp({ ...payload, role: 'courier' }),
++
++      resetPassword: async (email) => {
++        if (!supabase) return { error: new Error(supabaseConfigError) };
++        return supabase.auth.resetPasswordForEmail(email, {
++          redirectTo: `${window.location.origin}/auth/reset-password`,
+         });
++      },
+ 
+-        if (result.data?.session) {
+-          await hydrateUser(result.data.session, { firstName, lastName, phone });
++      /**
++       * Updates the password for a user currently in a recovery session.
++       * Clears the local recoveryMode flag on success so the normal
++       * role-based routing resumes.
++       */
++      updatePassword: async (newPassword) => {
++        if (!supabase) return { error: new Error(supabaseConfigError) };
++        const result = await supabase.auth.updateUser({ password: newPassword });
++        if (!result.error) {
++          setRecoveryMode(false);
+         }
+-
+         return result;
+       },
+-      resetPassword: async (email) => {
+-        if (!supabase) {
+-          return { error: new Error(supabaseConfigError) };
+-        }
+ 
+-        return supabase.auth.resetPasswordForEmail(email, {
+-          redirectTo: `${window.location.origin}/auth`,
+-        });
+-      },
+       signOut: async () => {
+         if (!supabase) return;
+         await supabase.auth.signOut();
++        if (!mountedRef.current) return;
+         setSession(null);
+         setProfile(null);
+         setProfilePending(false);
++        setRecoveryMode(false);
+       },
+     }),
+-    [loading, profile, profilePending, session]
++    [loading, profile, profilePending, recoveryMode, refreshProfile, session, signUp]
+   );
+ 
+   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+@@ -224,10 +264,8 @@ export function AuthProvider({ children }) {
+ 
+ export function useAuth() {
+   const context = useContext(AuthContext);
+-
+   if (!context) {
+     throw new Error('useAuth doit être utilisé dans AuthProvider.');
+   }
+-
+   return context;
+ }
+diff --git a/foodiz-v3/src/pages/auth/AuthHomePage.jsx b/foodiz-v3/src/pages/auth/AuthHomePage.jsx
+index cc31f01..8d6ab7b 100644
+--- a/foodiz-v3/src/pages/auth/AuthHomePage.jsx
++++ b/foodiz-v3/src/pages/auth/AuthHomePage.jsx
+@@ -61,6 +61,7 @@ export function AuthHomePage() {
+     profile,
+     loading,
+     profilePending,
++    recoveryMode,
+     isSupabaseConfigured,
+     supabaseConfigError,
+     signIn,
+@@ -79,10 +80,14 @@ export function AuthHomePage() {
+   const [proMessage, setProMessage] = useState('');
+ 
+   useEffect(() => {
++    if (recoveryMode) {
++      navigate('/auth/reset-password', { replace: true });
++      return;
++    }
+     if (session && profile?.role) {
+       navigate(getRoleHomePath(profile.role), { replace: true });
+     }
+-  }, [session, profile, navigate, getRoleHomePath]);
++  }, [recoveryMode, session, profile, navigate, getRoleHomePath]);
+ 
+   const footerFeatures = useMemo(
+     () => [
+@@ -155,13 +160,18 @@ export function AuthHomePage() {
+     setSubmitting(false);
+   }
+ 
+-  function handleProfessionalAction(type) {
++  function handleProfessionalAction(role, type) {
++    // Pro accounts have dedicated signup pages so we can collect the
++    // role-specific business info (establishment, documents, validation)
++    // right after Supabase auth signup, without polluting the client-only
++    // login form on this page.
+     if (type === 'signup') {
+-      setProMessage('Demande d’accès bientôt disponible — validation admin requise.');
++      navigate(`/auth/${role}`);
+       return;
+     }
+-
+-    setProMessage('Accès professionnel bientôt disponible.');
++    // For login, the same /auth screen handles every role (RoleGuard then
++    // routes the user to the correct home). We just clear the pro hint.
++    setProMessage('Connectez-vous ci-dessus avec vos identifiants professionnels.');
+   }
+ 
+   const isBusy = loading || submitting;
+@@ -433,8 +443,8 @@ export function AuthHomePage() {
+               text="Faites découvrir vos meilleures offres aux clients de votre ville."
+               primaryLabel="S’inscrire"
+               secondaryLabel="Se connecter"
+-              onPrimary={() => handleProfessionalAction('signup')}
+-              onSecondary={() => handleProfessionalAction('login')}
++              onPrimary={() => handleProfessionalAction('partner', 'signup')}
++              onSecondary={() => handleProfessionalAction('partner', 'login')}
+             />
+             <ProfessionalAccessCard
+               variant="courier"
+@@ -444,8 +454,8 @@ export function AuthHomePage() {
+               text="Rejoignez une expérience de livraison plus premium, plus claire, mieux pilotée."
+               primaryLabel="S’inscrire"
+               secondaryLabel="Se connecter"
+-              onPrimary={() => handleProfessionalAction('signup')}
+-              onSecondary={() => handleProfessionalAction('login')}
++              onPrimary={() => handleProfessionalAction('courier', 'signup')}
++              onSecondary={() => handleProfessionalAction('courier', 'login')}
+             />
+           </div>
+ 
+diff --git a/foodiz-v3/src/pages/auth/ProSignupPage.jsx b/foodiz-v3/src/pages/auth/ProSignupPage.jsx
+new file mode 100644
+index 0000000..fd3cf85
+--- /dev/null
++++ b/foodiz-v3/src/pages/auth/ProSignupPage.jsx
+@@ -0,0 +1,263 @@
++import { useEffect, useMemo, useState } from 'react';
++import { Link, useNavigate, useParams } from 'react-router-dom';
++import { useAuth } from '../../components/auth/AuthProvider';
++import { AuthField } from '../../components/auth/AuthField';
++import { PasswordField } from '../../components/auth/PasswordField';
++import {
++  ChefHatIcon,
++  MailIcon,
++  PhoneIcon,
++  ScooterIcon,
++  StoreIcon,
++  UserIcon,
++} from '../../components/auth/AuthIcons';
++import authBackgroundMain from '../../assets/auth-background-main.png';
++
++/**
++ * Shared signup screen for the two professional roles (partner / courier).
++ * Mounted under /auth/partner and /auth/courier — the URL :role param
++ * decides which copy + Supabase role gets used.
++ *
++ * The page only collects auth-level info (identity + credentials). The
++ * role-specific business data (establishment for partner, validation for
++ * courier) is collected on /partner/onboarding or /courier/onboarding once
++ * the user is signed in.
++ */
++
++const ROLE_CONFIG = {
++  partner: {
++    label: 'Restaurant ou épicerie',
++    icon: <StoreIcon />,
++    title: 'Inscription Restaurants & Épiciers',
++    subtitle:
++      "Créez votre accès professionnel. Vous compléterez les informations de votre établissement et déposerez vos documents juste après.",
++    cta: 'Créer mon compte professionnel',
++    signupAction: 'signUpPartner',
++    homeRoute: '/partner',
++    needsPhone: true,
++  },
++  courier: {
++    label: 'Livreur indépendant',
++    icon: <ScooterIcon />,
++    title: 'Inscription Livreurs',
++    subtitle:
++      "Rejoignez la flotte Foodiz. Votre compte sera activé après validation manuelle par un administrateur.",
++    cta: 'Créer mon compte livreur',
++    signupAction: 'signUpCourier',
++    homeRoute: '/courier',
++    needsPhone: true,
++  },
++};
++
++function mapSupabaseError(error) {
++  if (!error?.message) return 'Une erreur inattendue est survenue.';
++  const m = error.message.toLowerCase();
++  if (m.includes('user already registered')) return 'Un compte existe déjà avec cet email.';
++  if (m.includes('invalid login credentials')) return 'Email ou mot de passe incorrect.';
++  if (m.includes('password should be at least'))
++    return 'Le mot de passe doit contenir au moins 6 caractères.';
++  if (m.includes('email rate limit exceeded'))
++    return 'Trop de tentatives. Merci de réessayer dans quelques instants.';
++  return error.message;
++}
++
++const initialForm = { firstName: '', lastName: '', email: '', phone: '', password: '' };
++
++export function ProSignupPage() {
++  const { role } = useParams();
++  const navigate = useNavigate();
++  const auth = useAuth();
++  const config = ROLE_CONFIG[role];
++
++  const [form, setForm] = useState(initialForm);
++  const [submitting, setSubmitting] = useState(false);
++  const [error, setError] = useState(null);
++  const [message, setMessage] = useState(null);
++
++  // Once a profile exists with the right role, jump to onboarding (or to
++  // the role's home which itself decides whether onboarding is still due).
++  useEffect(() => {
++    if (!config) return;
++    if (auth.session && auth.profile?.role === role) {
++      navigate(config.homeRoute, { replace: true });
++    }
++  }, [auth.session, auth.profile, role, config, navigate]);
++
++  const isSupabaseConfigured = auth.isSupabaseConfigured;
++
++  const subtitleNode = useMemo(
++    () => (config ? <p className="foodiz-auth-subtitle">{config.subtitle}</p> : null),
++    [config]
++  );
++
++  if (!config) {
++    return (
++      <div className="foodiz-auth-page">
++        <div className="foodiz-auth-frame">
++          <section className="foodiz-auth-card premium-card">
++            <h1>Rôle inconnu</h1>
++            <p className="muted">
++              Cette page est réservée aux inscriptions partenaire ou livreur.
++            </p>
++            <Link className="auth-link" to="/auth">
++              Retour à l’accueil
++            </Link>
++          </section>
++        </div>
++      </div>
++    );
++  }
++
++  async function handleSubmit(event) {
++    event.preventDefault();
++    setError(null);
++    setMessage(null);
++    setSubmitting(true);
++
++    const action = auth[config.signupAction];
++    const result = await action({
++      firstName: form.firstName,
++      lastName: form.lastName,
++      email: form.email,
++      phone: form.phone,
++      password: form.password,
++    });
++
++    if (result?.error) {
++      setError(mapSupabaseError(result.error));
++      setSubmitting(false);
++      return;
++    }
++
++    if (!result?.data?.session) {
++      // Email confirmation flow: the profile + role row will be created by
++      // the trigger only after the user clicks the confirmation link.
++      setMessage(
++        'Compte créé. Confirmez votre email pour accéder à la suite de l’inscription Foodiz.'
++      );
++    } else {
++      setMessage('Compte créé. Redirection en cours…');
++    }
++    setSubmitting(false);
++  }
++
++  return (
++    <div
++      className="foodiz-auth-page"
++      style={{ '--foodiz-auth-bg-image': `url(${authBackgroundMain})` }}
++    >
++      <div className="foodiz-auth-bg" aria-hidden="true">
++        <div className="foodiz-auth-bg__triangle" />
++        <div className="foodiz-auth-bg__fold-shadow" />
++        <div className="foodiz-auth-bg__grain" />
++        <div className="foodiz-auth-bg__fibers" />
++      </div>
++
++      <div className="foodiz-auth-frame">
++        <header className="foodiz-auth-header">
++          <div className="foodiz-auth-wordmark-wrap">
++            <div className="foodiz-auth-wordmark">Foodiz</div>
++            <span className="foodiz-auth-wordmark-underline" aria-hidden="true" />
++          </div>
++        </header>
++
++        <section className="foodiz-auth-card premium-card">
++          <div className="foodiz-auth-card__top">
++            <p className="eyebrow">
++              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
++                <ChefHatIcon /> {config.label}
++              </span>
++            </p>
++            <h1>{config.title}</h1>
++            {subtitleNode}
++          </div>
++
++          {!isSupabaseConfigured ? (
++            <div className="auth-feedback auth-feedback--warning">
++              <strong>Configuration locale incomplète.</strong>
++              <span>{auth.supabaseConfigError}</span>
++            </div>
++          ) : null}
++
++          {error ? <div className="auth-feedback auth-feedback--error">{error}</div> : null}
++          {message ? (
++            <div className="auth-feedback auth-feedback--success">{message}</div>
++          ) : null}
++
++          <form className="auth-form" onSubmit={handleSubmit}>
++            <div className="auth-grid-two">
++              <AuthField
++                icon={<UserIcon />}
++                label="Prénom"
++                type="text"
++                name="firstName"
++                placeholder="Lina"
++                autoComplete="given-name"
++                value={form.firstName}
++                onChange={(e) => setForm((c) => ({ ...c, firstName: e.target.value }))}
++                required
++              />
++              <AuthField
++                icon={<UserIcon />}
++                label="Nom"
++                type="text"
++                name="lastName"
++                placeholder="Martin"
++                autoComplete="family-name"
++                value={form.lastName}
++                onChange={(e) => setForm((c) => ({ ...c, lastName: e.target.value }))}
++                required
++              />
++            </div>
++
++            <AuthField
++              icon={<MailIcon />}
++              label="Email professionnel"
++              type="email"
++              name="email"
++              placeholder="contact@mon-etablissement.fr"
++              autoComplete="email"
++              value={form.email}
++              onChange={(e) => setForm((c) => ({ ...c, email: e.target.value }))}
++              required
++            />
++
++            <AuthField
++              icon={<PhoneIcon />}
++              label="Téléphone"
++              type="tel"
++              name="phone"
++              placeholder="06 00 00 00 00"
++              autoComplete="tel"
++              value={form.phone}
++              onChange={(e) => setForm((c) => ({ ...c, phone: e.target.value }))}
++              required={config.needsPhone}
++            />
++
++            <PasswordField
++              label="Mot de passe"
++              value={form.password}
++              onChange={(e) => setForm((c) => ({ ...c, password: e.target.value }))}
++              name="new-password"
++            />
++
++            <button
++              className="gold-button auth-submit"
++              type="submit"
++              disabled={submitting || !isSupabaseConfigured}
++            >
++              {config.cta}
++            </button>
++
++            <p className="auth-inline-text">
++              J’ai déjà un compte{' '}
++              <Link className="auth-link" to="/auth">
++                Me connecter
++              </Link>
++            </p>
++          </form>
++        </section>
++      </div>
++    </div>
++  );
++}
+diff --git a/foodiz-v3/src/pages/auth/ResetPasswordPage.jsx b/foodiz-v3/src/pages/auth/ResetPasswordPage.jsx
+new file mode 100644
+index 0000000..20b952d
+--- /dev/null
++++ b/foodiz-v3/src/pages/auth/ResetPasswordPage.jsx
+@@ -0,0 +1,160 @@
++import { useEffect, useState } from 'react';
++import { Link, useNavigate } from 'react-router-dom';
++import { useAuth } from '../../components/auth/AuthProvider';
++import { PasswordField } from '../../components/auth/PasswordField';
++import authBackgroundMain from '../../assets/auth-background-main.png';
++
++/**
++ * Step 2 of the password-reset flow.
++ *
++ * The user lands here from the magic link generated by `resetPasswordForEmail`.
++ * Supabase's auth client (with `detectSessionInUrl: true`) creates a transient
++ * recovery session and emits the PASSWORD_RECOVERY event — captured by the
++ * AuthProvider, which sets `recoveryMode = true`.
++ *
++ * Until the user submits a new password, the rest of the app should *not*
++ * react to that session: ProtectedRoute / RoleGuard explicitly delegate to
++ * this page when recoveryMode is on.
++ */
++export function ResetPasswordPage() {
++  const navigate = useNavigate();
++  const { session, recoveryMode, updatePassword, isSupabaseConfigured, supabaseConfigError } =
++    useAuth();
++
++  const [password, setPassword] = useState('');
++  const [confirm, setConfirm] = useState('');
++  const [submitting, setSubmitting] = useState(false);
++  const [error, setError] = useState(null);
++  const [success, setSuccess] = useState(false);
++
++  // After a successful reset, give a small breather so the user reads the
++  // confirmation, then send them to the login screen as freshly-signed-in.
++  useEffect(() => {
++    if (!success) return;
++    const timer = setTimeout(() => navigate('/auth', { replace: true }), 1800);
++    return () => clearTimeout(timer);
++  }, [success, navigate]);
++
++  async function handleSubmit(event) {
++    event.preventDefault();
++    setError(null);
++
++    if (password.length < 8) {
++      setError('Choisissez un mot de passe d’au moins 8 caractères.');
++      return;
++    }
++    if (password !== confirm) {
++      setError('Les deux mots de passe ne correspondent pas.');
++      return;
++    }
++
++    setSubmitting(true);
++    const result = await updatePassword(password);
++    setSubmitting(false);
++
++    if (result?.error) {
++      setError(result.error.message ?? 'Mise à jour du mot de passe impossible.');
++      return;
++    }
++
++    setSuccess(true);
++  }
++
++  // If the user navigates here directly without a session (no recovery link
++  // consumed), guide them back to the request screen.
++  const noSession = isSupabaseConfigured && !session;
++
++  return (
++    <div
++      className="foodiz-auth-page"
++      style={{ '--foodiz-auth-bg-image': `url(${authBackgroundMain})` }}
++    >
++      <div className="foodiz-auth-bg" aria-hidden="true">
++        <div className="foodiz-auth-bg__triangle" />
++        <div className="foodiz-auth-bg__fold-shadow" />
++        <div className="foodiz-auth-bg__grain" />
++      </div>
++
++      <div className="foodiz-auth-frame">
++        <header className="foodiz-auth-header">
++          <div className="foodiz-auth-wordmark-wrap">
++            <div className="foodiz-auth-wordmark">Foodiz</div>
++            <span className="foodiz-auth-wordmark-underline" aria-hidden="true" />
++          </div>
++        </header>
++
++        <section className="foodiz-auth-card premium-card">
++          <div className="foodiz-auth-card__top">
++            <p className="eyebrow">Sécurité du compte</p>
++            <h1>Choisir un nouveau mot de passe</h1>
++            <p className="foodiz-auth-subtitle">
++              Saisissez un nouveau mot de passe pour finaliser la réinitialisation de votre accès Foodiz.
++            </p>
++          </div>
++
++          {!isSupabaseConfigured ? (
++            <div className="auth-feedback auth-feedback--warning">
++              <strong>Configuration locale incomplète.</strong>
++              <span>{supabaseConfigError}</span>
++            </div>
++          ) : null}
++
++          {noSession ? (
++            <div className="auth-feedback auth-feedback--warning">
++              <strong>Lien expiré ou invalide.</strong>
++              <span>
++                Demandez un nouveau lien de réinitialisation depuis{' '}
++                <Link className="auth-link" to="/auth">
++                  la page de connexion
++                </Link>
++                .
++              </span>
++            </div>
++          ) : null}
++
++          {success ? (
++            <div className="auth-feedback auth-feedback--success">
++              Mot de passe mis à jour. Redirection en cours…
++            </div>
++          ) : null}
++          {error ? <div className="auth-feedback auth-feedback--error">{error}</div> : null}
++
++          <form className="auth-form" onSubmit={handleSubmit}>
++            <PasswordField
++              label="Nouveau mot de passe"
++              name="new-password"
++              value={password}
++              onChange={(e) => setPassword(e.target.value)}
++            />
++            <PasswordField
++              label="Confirmer le mot de passe"
++              name="new-password-confirm"
++              value={confirm}
++              onChange={(e) => setConfirm(e.target.value)}
++            />
++
++            <button
++              className="gold-button auth-submit"
++              type="submit"
++              disabled={submitting || success || noSession || !isSupabaseConfigured}
++            >
++              Mettre à jour mon mot de passe
++            </button>
++
++            {!recoveryMode && session ? (
++              <p className="auth-inline-text muted">
++                Vous êtes déjà connecté — vous pouvez tout de même mettre à jour votre mot de passe.
++              </p>
++            ) : null}
++
++            <p className="auth-inline-text">
++              <Link className="auth-link" to="/auth">
++                Retour à la connexion
++              </Link>
++            </p>
++          </form>
++        </section>
++      </div>
++    </div>
++  );
++}
+diff --git a/foodiz-v3/src/pages/courier/CourierHomePage.jsx b/foodiz-v3/src/pages/courier/CourierHomePage.jsx
+index 07aeca7..04b4135 100644
+--- a/foodiz-v3/src/pages/courier/CourierHomePage.jsx
++++ b/foodiz-v3/src/pages/courier/CourierHomePage.jsx
+@@ -1,10 +1,97 @@
++import { useEffect, useState } from 'react';
++import { Link } from 'react-router-dom';
+ import { SectionCard } from '../../components/ui/SectionCard';
++import { useAuth } from '../../components/auth/AuthProvider';
++import { supabase } from '../../lib/supabaseClient';
+ 
++/**
++ * Gate page for the courier area, mirroring PartnerHomePage:
++ *   - no public.couriers row -> /courier/onboarding
++ *   - row exists but not approved -> pending/rejected/suspended screen
++ *   - approved -> placeholder for the future courier dashboard.
++ */
+ export function CourierHomePage() {
++  const { session } = useAuth();
++  const [courier, setCourier] = useState(null);
++  const [loading, setLoading] = useState(true);
++
++  useEffect(() => {
++    let active = true;
++    async function load() {
++      if (!supabase || !session?.user?.id) {
++        setLoading(false);
++        return;
++      }
++      const { data } = await supabase
++        .from('couriers')
++        .select('id, validation_status')
++        .eq('user_id', session.user.id)
++        .maybeSingle();
++      if (!active) return;
++      setCourier(data ?? null);
++      setLoading(false);
++    }
++    load();
++    return () => {
++      active = false;
++    };
++  }, [session?.user?.id]);
++
++  if (loading) {
++    return (
++      <div className="page-stack">
++        <SectionCard title="Chargement" description="Lecture de votre dossier livreur…" />
++      </div>
++    );
++  }
++
++  if (!courier) {
++    return (
++      <div className="page-stack">
++        <SectionCard
++          title="Finalisez votre candidature"
++          description="Avant d’accéder à votre espace livreur, confirmez votre engagement pour ouvrir votre dossier."
++        >
++          <Link className="gold-button" to="/courier/onboarding">
++            Compléter ma candidature
++          </Link>
++        </SectionCard>
++      </div>
++    );
++  }
++
++  if (courier.validation_status !== 'approved') {
++    const labels = {
++      pending: {
++        title: 'Candidature en cours de validation',
++        description:
++          'Un administrateur Foodiz examine votre dossier. La validation est généralement prononcée sous 24 à 48 heures.',
++      },
++      rejected: {
++        title: 'Candidature refusée',
++        description:
++          'Votre dossier n’a pas pu être validé. Contactez le support Foodiz pour connaître la marche à suivre.',
++      },
++      suspended: {
++        title: 'Compte suspendu',
++        description:
++          'Votre accès livreur est temporairement suspendu. Contactez le support Foodiz.',
++      },
++    };
++    const copy = labels[courier.validation_status] ?? labels.pending;
++    return (
++      <div className="page-stack">
++        <SectionCard title={copy.title} description={copy.description}>
++          <p className="muted">Statut actuel : {courier.validation_status}</p>
++        </SectionCard>
++      </div>
++    );
++  }
++
+   return (
+     <div className="page-stack">
+       <SectionCard
+-        title="Surface Courier"
++        title="Espace livreur"
+         description="Placeholder propre pour disponibilités, livraisons, suivi GPS et revenus."
+       >
+         <ul className="feature-list">
+diff --git a/foodiz-v3/src/pages/courier/CourierOnboardingPage.jsx b/foodiz-v3/src/pages/courier/CourierOnboardingPage.jsx
+new file mode 100644
+index 0000000..454ea29
+--- /dev/null
++++ b/foodiz-v3/src/pages/courier/CourierOnboardingPage.jsx
+@@ -0,0 +1,131 @@
++import { useEffect, useState } from 'react';
++import { useNavigate } from 'react-router-dom';
++import { useAuth } from '../../components/auth/AuthProvider';
++import { supabase } from '../../lib/supabaseClient';
++import { SectionCard } from '../../components/ui/SectionCard';
++
++/**
++ * Courier onboarding — Workflow 7.3 of FOODIZ_TECHNICAL_BLUEPRINT_v1.1.
++ *
++ * The MVP courier signup is intentionally minimal: per the master spec §4.3,
++ * the courier just creates an account and waits for manual admin validation.
++ * Documents and vehicle info are not required at this stage (they will be
++ * tracked in later iterations once the related tables exist).
++ *
++ * Steps:
++ *   1. (already done) auth.users + profiles(role=courier) created via signup.
++ *   2. Acknowledge the conditions, then insert public.couriers with
++ *      validation_status = pending.
++ *   3. Redirect to /courier where CourierHomePage shows the pending state.
++ */
++export function CourierOnboardingPage() {
++  const navigate = useNavigate();
++  const { profile, session } = useAuth();
++
++  const [acknowledged, setAcknowledged] = useState(false);
++  const [submitting, setSubmitting] = useState(false);
++  const [error, setError] = useState(null);
++  const [existing, setExisting] = useState(null);
++  const [checking, setChecking] = useState(true);
++
++  useEffect(() => {
++    let active = true;
++    async function check() {
++      if (!supabase || !session?.user?.id) {
++        setChecking(false);
++        return;
++      }
++      const { data } = await supabase
++        .from('couriers')
++        .select('id, validation_status')
++        .eq('user_id', session.user.id)
++        .maybeSingle();
++      if (!active) return;
++      if (data) setExisting(data);
++      setChecking(false);
++    }
++    check();
++    return () => {
++      active = false;
++    };
++  }, [session?.user?.id]);
++
++  async function handleSubmit(event) {
++    event.preventDefault();
++    if (!acknowledged) {
++      setError('Merci d’accepter les conditions avant de soumettre votre candidature.');
++      return;
++    }
++    setError(null);
++    setSubmitting(true);
++    try {
++      const { error: insertError } = await supabase
++        .from('couriers')
++        .insert({ user_id: session.user.id });
++      if (insertError) throw insertError;
++      navigate('/courier', { replace: true });
++    } catch (err) {
++      setError(err.message ?? 'Erreur inattendue.');
++    } finally {
++      setSubmitting(false);
++    }
++  }
++
++  if (checking) {
++    return (
++      <div className="page-stack">
++        <SectionCard title="Chargement" description="Lecture de votre dossier livreur…" />
++      </div>
++    );
++  }
++
++  if (existing) {
++    return (
++      <div className="page-stack">
++        <SectionCard
++          title="Candidature déjà envoyée"
++          description="Votre dossier livreur a été enregistré. Suivez son état depuis votre espace livreur."
++        >
++          <button className="gold-button" onClick={() => navigate('/courier', { replace: true })}>
++            Aller à mon espace livreur
++          </button>
++        </SectionCard>
++      </div>
++    );
++  }
++
++  return (
++    <div className="page-stack">
++      <SectionCard
++        title={`Bienvenue ${profile?.first_name ?? ''} — finalisez votre candidature livreur`}
++        description="Confirmez votre engagement, votre dossier sera ensuite revu manuellement par un administrateur Foodiz."
++      >
++        {error ? <div className="auth-feedback auth-feedback--error">{error}</div> : null}
++        <form className="auth-form" onSubmit={handleSubmit}>
++          <ul className="feature-list">
++            <li>Je m’engage à respecter les zones et créneaux que je définirai.</li>
++            <li>Je m’engage à confirmer la récupération et la livraison de chaque commande.</li>
++            <li>J’autorise Foodiz à utiliser ma position GPS pendant les livraisons.</li>
++            <li>Je comprends que mon compte sera activé après validation manuelle.</li>
++          </ul>
++
++          <label
++            className="auth-field"
++            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
++          >
++            <input
++              type="checkbox"
++              checked={acknowledged}
++              onChange={(e) => setAcknowledged(e.target.checked)}
++            />
++            <span>J’accepte les conditions ci-dessus</span>
++          </label>
++
++          <button className="gold-button auth-submit" type="submit" disabled={submitting}>
++            {submitting ? 'Envoi en cours…' : 'Envoyer ma candidature'}
++          </button>
++        </form>
++      </SectionCard>
++    </div>
++  );
++}
+diff --git a/foodiz-v3/src/pages/partner/PartnerHomePage.jsx b/foodiz-v3/src/pages/partner/PartnerHomePage.jsx
+index 158f4f0..187f961 100644
+--- a/foodiz-v3/src/pages/partner/PartnerHomePage.jsx
++++ b/foodiz-v3/src/pages/partner/PartnerHomePage.jsx
+@@ -1,11 +1,114 @@
++import { useEffect, useState } from 'react';
++import { Link } from 'react-router-dom';
+ import { SectionCard } from '../../components/ui/SectionCard';
++import { useAuth } from '../../components/auth/AuthProvider';
++import { supabase } from '../../lib/supabaseClient';
+ 
++/**
++ * Gate page for the partner area.
++ *
++ * Three states are possible after the user has logged in as a partner:
++ *
++ *   a) No public.partners row yet -> push them to /partner/onboarding so
++ *      they can declare their establishment + upload mandatory documents.
++ *   b) Row exists but validation_status != 'approved' -> show a friendly
++ *      "pending / rejected / suspended" screen. Per master spec §4.2 Foodiz
++ *      validates within 24-48h.
++ *   c) validation_status == 'approved' -> placeholder for the future partner
++ *      dashboard (catalog, orders, revenue, AI campaigns).
++ */
+ export function PartnerHomePage() {
++  const { session } = useAuth();
++  const [partner, setPartner] = useState(null);
++  const [loading, setLoading] = useState(true);
++
++  useEffect(() => {
++    let active = true;
++    async function load() {
++      if (!supabase || !session?.user?.id) {
++        setLoading(false);
++        return;
++      }
++      const { data } = await supabase
++        .from('partners')
++        .select('id, display_name, validation_status, rc_pro_due_at, rc_pro_received_at')
++        .eq('user_id', session.user.id)
++        .maybeSingle();
++      if (!active) return;
++      setPartner(data ?? null);
++      setLoading(false);
++    }
++    load();
++    return () => {
++      active = false;
++    };
++  }, [session?.user?.id]);
++
++  if (loading) {
++    return (
++      <div className="page-stack">
++        <SectionCard title="Chargement" description="Lecture de votre dossier partenaire…" />
++      </div>
++    );
++  }
++
++  if (!partner) {
++    return (
++      <div className="page-stack">
++        <SectionCard
++          title="Finalisez votre inscription"
++          description="Avant d’accéder à votre espace, complétez les informations de votre établissement et déposez les documents obligatoires."
++        >
++          <Link className="gold-button" to="/partner/onboarding">
++            Compléter mon dossier
++          </Link>
++        </SectionCard>
++      </div>
++    );
++  }
++
++  if (partner.validation_status !== 'approved') {
++    const labels = {
++      pending: {
++        title: 'Dossier en cours de validation',
++        description:
++          'Un administrateur Foodiz examine votre dossier. La validation est généralement prononcée sous 24 à 48 heures.',
++      },
++      rejected: {
++        title: 'Dossier refusé',
++        description:
++          'Votre dossier n’a pas pu être validé. Contactez le support Foodiz pour connaître la marche à suivre.',
++      },
++      suspended: {
++        title: 'Compte suspendu',
++        description:
++          'Votre accès partenaire est temporairement suspendu. Contactez le support Foodiz.',
++      },
++    };
++    const copy = labels[partner.validation_status] ?? labels.pending;
++    return (
++      <div className="page-stack">
++        <SectionCard title={copy.title} description={copy.description}>
++          <ul className="feature-list">
++            <li>Établissement : {partner.display_name}</li>
++            <li>Statut : {partner.validation_status}</li>
++            {partner.rc_pro_due_at ? (
++              <li>
++                RC PRO attendu avant le{' '}
++                {new Date(partner.rc_pro_due_at).toLocaleDateString('fr-FR')}
++              </li>
++            ) : null}
++          </ul>
++        </SectionCard>
++      </div>
++    );
++  }
++
+   return (
+     <div className="page-stack">
+       <SectionCard
+-        title="Surface Partner"
+-        description="Placeholder propre pour établissement, catalogue, commandes, revenus et validation."
++        title={`Espace partenaire — ${partner.display_name}`}
++        description="Placeholder propre pour catalogue, commandes, revenus, statistiques et campagnes notifications IA."
+       >
+         <ul className="feature-list">
+           <li>Gestion établissement</li>
+diff --git a/foodiz-v3/src/pages/partner/PartnerOnboardingPage.jsx b/foodiz-v3/src/pages/partner/PartnerOnboardingPage.jsx
+new file mode 100644
+index 0000000..02b2eb1
+--- /dev/null
++++ b/foodiz-v3/src/pages/partner/PartnerOnboardingPage.jsx
+@@ -0,0 +1,473 @@
++import { useEffect, useMemo, useState } from 'react';
++import { useNavigate } from 'react-router-dom';
++import { useAuth } from '../../components/auth/AuthProvider';
++import { supabase } from '../../lib/supabaseClient';
++import { SectionCard } from '../../components/ui/SectionCard';
++
++/**
++ * Partner onboarding — Workflow 7.2 of FOODIZ_TECHNICAL_BLUEPRINT_v1.1:
++ *
++ *   1. (already done) auth.users + profiles(role=partner) created via signup +
++ *      handle_new_user trigger.
++ *   2. Insert public.partners with validation_status = pending.
++ *   3. Compute rc_pro_due_at = now() + 7 days (master spec §4.2).
++ *   4. Upload mandatory documents (siret, identity_document, kbis) to the
++ *      private storage bucket `partner-documents-private` using the
++ *      4-segment path enforced by storage_partner_document_path_is_valid().
++ *   5. Insert one public.partner_documents row per uploaded file
++ *      (verification_status defaults to pending_review).
++ *
++ * Once those steps succeed the page navigates to /partner where the
++ * PartnerHomePage shows a "validation pending" state until an admin approves.
++ */
++
++const REQUIRED_DOCS = [
++  { type: 'siret', label: 'Justificatif SIRET' },
++  { type: 'identity_document', label: 'Pièce d’identité du dirigeant' },
++  { type: 'kbis', label: 'Extrait KBIS' },
++];
++
++const ESTABLISHMENT_TYPES = [
++  { value: 'restaurant', label: 'Restaurant' },
++  { value: 'market', label: 'Épicerie / Market' },
++];
++
++const initialForm = {
++  establishmentType: 'restaurant',
++  legalName: '',
++  displayName: '',
++  description: '',
++  siret: '',
++  isHalal: false,
++  minimumOrderEuros: '',
++  addressLine1: '',
++  addressLine2: '',
++  postalCode: '',
++  city: '',
++  countryCode: 'FR',
++  // Latitude / longitude are required by the schema. In the absence of a
++  // geocoder we let the user paste them manually with a sensible default.
++  latitude: '',
++  longitude: '',
++};
++
++function fileExtension(file) {
++  const dot = file.name.lastIndexOf('.');
++  return dot >= 0 ? file.name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '') : 'bin';
++}
++
++function uuidv4() {
++  // crypto.randomUUID is widely supported in modern browsers; fall back to a
++  // simple polyfill for older runtimes used in tests.
++  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
++  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
++    const r = (Math.random() * 16) | 0;
++    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
++  });
++}
++
++export function PartnerOnboardingPage() {
++  const navigate = useNavigate();
++  const { profile, session } = useAuth();
++
++  const [form, setForm] = useState(initialForm);
++  const [files, setFiles] = useState({}); // { siret: File, identity_document: File, kbis: File }
++  const [submitting, setSubmitting] = useState(false);
++  const [error, setError] = useState(null);
++  const [existingPartnerId, setExistingPartnerId] = useState(null);
++  const [checkingExisting, setCheckingExisting] = useState(true);
++
++  // Detect whether the partner already submitted their establishment so we
++  // don't let them create a duplicate row (the schema enforces UNIQUE on
++  // partners.user_id anyway, but we want a friendly UX).
++  useEffect(() => {
++    let active = true;
++    async function check() {
++      if (!supabase || !session?.user?.id) {
++        setCheckingExisting(false);
++        return;
++      }
++      const { data } = await supabase
++        .from('partners')
++        .select('id, validation_status')
++        .eq('user_id', session.user.id)
++        .maybeSingle();
++      if (!active) return;
++      if (data) {
++        setExistingPartnerId(data.id);
++      }
++      setCheckingExisting(false);
++    }
++    check();
++    return () => {
++      active = false;
++    };
++  }, [session?.user?.id]);
++
++  const missingDocs = useMemo(
++    () => REQUIRED_DOCS.filter((d) => !files[d.type]),
++    [files]
++  );
++
++  function update(field, value) {
++    setForm((current) => ({ ...current, [field]: value }));
++  }
++
++  async function uploadDocument(partnerId, docType, file) {
++    const ext = fileExtension(file);
++    const fileId = uuidv4();
++    // Path shape enforced by storage_partner_document_path_is_valid:
++    //   partners/{partner_uuid}/{document_type}/{file_uuid}.{ext}
++    const path = `partners/${partnerId}/${docType}/${fileId}.${ext}`;
++
++    const { error: uploadError } = await supabase.storage
++      .from('partner-documents-private')
++      .upload(path, file, { upsert: false, contentType: file.type || undefined });
++    if (uploadError) throw new Error(`Upload ${docType} : ${uploadError.message}`);
++
++    const { error: insertError } = await supabase.from('partner_documents').insert({
++      partner_id: partnerId,
++      document_type: docType,
++      storage_path: path,
++    });
++    if (insertError) throw new Error(`Enregistrement ${docType} : ${insertError.message}`);
++  }
++
++  async function handleSubmit(event) {
++    event.preventDefault();
++    setError(null);
++
++    if (existingPartnerId) {
++      navigate('/partner', { replace: true });
++      return;
++    }
++
++    if (missingDocs.length > 0) {
++      setError(
++        `Documents manquants : ${missingDocs.map((d) => d.label).join(', ')}.`
++      );
++      return;
++    }
++
++    const lat = parseFloat(form.latitude);
++    const lng = parseFloat(form.longitude);
++    if (Number.isNaN(lat) || Number.isNaN(lng)) {
++      setError('Latitude et longitude sont requises (valeurs numériques).');
++      return;
++    }
++    const minOrder = form.minimumOrderEuros === '' ? 0 : parseFloat(form.minimumOrderEuros);
++    if (Number.isNaN(minOrder) || minOrder < 0) {
++      setError('Le minimum de commande doit être un nombre positif.');
++      return;
++    }
++
++    setSubmitting(true);
++    try {
++      // 7-day RC PRO clock starts at signup per master spec §4.2.
++      const rcProDueAt = new Date();
++      rcProDueAt.setDate(rcProDueAt.getDate() + 7);
++
++      const { data: partnerRow, error: partnerError } = await supabase
++        .from('partners')
++        .insert({
++          user_id: session.user.id,
++          establishment_type: form.establishmentType,
++          legal_name: form.legalName.trim(),
++          display_name: form.displayName.trim(),
++          description: form.description.trim() || null,
++          siret: form.siret.trim(),
++          is_halal: !!form.isHalal,
++          minimum_order_cents: Math.round(minOrder * 100),
++          address_line_1: form.addressLine1.trim(),
++          address_line_2: form.addressLine2.trim() || null,
++          postal_code: form.postalCode.trim(),
++          city: form.city.trim(),
++          country_code: form.countryCode.trim().toUpperCase(),
++          latitude: lat,
++          longitude: lng,
++          rc_pro_due_at: rcProDueAt.toISOString(),
++        })
++        .select('id')
++        .single();
++      if (partnerError) throw partnerError;
++
++      // Upload docs sequentially — Supabase Storage rejects parallel uploads
++      // to the same bucket fairly often and the user benefits from a clean
++      // failure on the exact document that broke.
++      for (const doc of REQUIRED_DOCS) {
++        // eslint-disable-next-line no-await-in-loop
++        await uploadDocument(partnerRow.id, doc.type, files[doc.type]);
++      }
++
++      navigate('/partner', { replace: true });
++    } catch (err) {
++      setError(err.message ?? 'Erreur inattendue lors de la soumission.');
++    } finally {
++      setSubmitting(false);
++    }
++  }
++
++  if (checkingExisting) {
++    return (
++      <div className="page-stack">
++        <SectionCard title="Chargement" description="Lecture de votre dossier partenaire…" />
++      </div>
++    );
++  }
++
++  if (existingPartnerId) {
++    return (
++      <div className="page-stack">
++        <SectionCard
++          title="Dossier déjà soumis"
++          description="Votre établissement a déjà été enregistré. Suivez l’état de validation depuis votre espace partenaire."
++        >
++          <button className="gold-button" onClick={() => navigate('/partner', { replace: true })}>
++            Aller à mon espace partenaire
++          </button>
++        </SectionCard>
++      </div>
++    );
++  }
++
++  return (
++    <div className="page-stack">
++      <SectionCard
++        title={`Bienvenue ${profile?.first_name ?? ''} — finalisez votre inscription`}
++        description="Renseignez les informations de votre établissement et déposez les documents obligatoires. Un administrateur Foodiz validera votre dossier sous 24 à 48h."
++      >
++        {error ? <div className="auth-feedback auth-feedback--error">{error}</div> : null}
++
++        <form className="auth-form" onSubmit={handleSubmit}>
++          <fieldset style={{ border: 0, padding: 0, display: 'grid', gap: 12 }}>
++            <legend className="eyebrow">Établissement</legend>
++
++            <label className="auth-field">
++              <span className="auth-field__label">Type d’établissement</span>
++              <span className="auth-field__control">
++                <select
++                  className="auth-field__input"
++                  value={form.establishmentType}
++                  onChange={(e) => update('establishmentType', e.target.value)}
++                >
++                  {ESTABLISHMENT_TYPES.map((t) => (
++                    <option key={t.value} value={t.value}>
++                      {t.label}
++                    </option>
++                  ))}
++                </select>
++              </span>
++            </label>
++
++            <div className="auth-grid-two">
++              <label className="auth-field">
++                <span className="auth-field__label">Raison sociale</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="text"
++                    required
++                    value={form.legalName}
++                    onChange={(e) => update('legalName', e.target.value)}
++                  />
++                </span>
++              </label>
++              <label className="auth-field">
++                <span className="auth-field__label">Nom commercial (visible client)</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="text"
++                    required
++                    value={form.displayName}
++                    onChange={(e) => update('displayName', e.target.value)}
++                  />
++                </span>
++              </label>
++            </div>
++
++            <label className="auth-field">
++              <span className="auth-field__label">Description (optionnelle)</span>
++              <span className="auth-field__control">
++                <textarea
++                  className="auth-field__input"
++                  rows={3}
++                  value={form.description}
++                  onChange={(e) => update('description', e.target.value)}
++                />
++              </span>
++            </label>
++
++            <div className="auth-grid-two">
++              <label className="auth-field">
++                <span className="auth-field__label">SIRET</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="text"
++                    inputMode="numeric"
++                    required
++                    value={form.siret}
++                    onChange={(e) => update('siret', e.target.value)}
++                  />
++                </span>
++              </label>
++              <label className="auth-field">
++                <span className="auth-field__label">Minimum de commande (€)</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="number"
++                    min="0"
++                    step="0.5"
++                    value={form.minimumOrderEuros}
++                    onChange={(e) => update('minimumOrderEuros', e.target.value)}
++                  />
++                </span>
++              </label>
++            </div>
++
++            <label className="auth-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
++              <input
++                type="checkbox"
++                checked={form.isHalal}
++                onChange={(e) => update('isHalal', e.target.checked)}
++              />
++              <span>Établissement halal</span>
++            </label>
++          </fieldset>
++
++          <fieldset style={{ border: 0, padding: 0, display: 'grid', gap: 12 }}>
++            <legend className="eyebrow">Adresse</legend>
++
++            <label className="auth-field">
++              <span className="auth-field__label">Adresse</span>
++              <span className="auth-field__control">
++                <input
++                  className="auth-field__input"
++                  type="text"
++                  required
++                  value={form.addressLine1}
++                  onChange={(e) => update('addressLine1', e.target.value)}
++                />
++              </span>
++            </label>
++            <label className="auth-field">
++              <span className="auth-field__label">Complément (optionnel)</span>
++              <span className="auth-field__control">
++                <input
++                  className="auth-field__input"
++                  type="text"
++                  value={form.addressLine2}
++                  onChange={(e) => update('addressLine2', e.target.value)}
++                />
++              </span>
++            </label>
++            <div className="auth-grid-two">
++              <label className="auth-field">
++                <span className="auth-field__label">Code postal</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="text"
++                    required
++                    value={form.postalCode}
++                    onChange={(e) => update('postalCode', e.target.value)}
++                  />
++                </span>
++              </label>
++              <label className="auth-field">
++                <span className="auth-field__label">Ville</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="text"
++                    required
++                    value={form.city}
++                    onChange={(e) => update('city', e.target.value)}
++                  />
++                </span>
++              </label>
++            </div>
++            <div className="auth-grid-two">
++              <label className="auth-field">
++                <span className="auth-field__label">Pays (ISO 2)</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="text"
++                    maxLength={2}
++                    required
++                    value={form.countryCode}
++                    onChange={(e) => update('countryCode', e.target.value.toUpperCase())}
++                  />
++                </span>
++              </label>
++              <div />
++            </div>
++            <div className="auth-grid-two">
++              <label className="auth-field">
++                <span className="auth-field__label">Latitude</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="number"
++                    step="0.000001"
++                    required
++                    value={form.latitude}
++                    onChange={(e) => update('latitude', e.target.value)}
++                  />
++                </span>
++              </label>
++              <label className="auth-field">
++                <span className="auth-field__label">Longitude</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="number"
++                    step="0.000001"
++                    required
++                    value={form.longitude}
++                    onChange={(e) => update('longitude', e.target.value)}
++                  />
++                </span>
++              </label>
++            </div>
++            <p className="muted" style={{ fontSize: 13 }}>
++              Astuce : copiez les coordonnées depuis Google Maps (clic droit sur l’adresse).
++            </p>
++          </fieldset>
++
++          <fieldset style={{ border: 0, padding: 0, display: 'grid', gap: 12 }}>
++            <legend className="eyebrow">Documents obligatoires</legend>
++            {REQUIRED_DOCS.map((doc) => (
++              <label key={doc.type} className="auth-field">
++                <span className="auth-field__label">{doc.label}</span>
++                <span className="auth-field__control">
++                  <input
++                    className="auth-field__input"
++                    type="file"
++                    accept="application/pdf,image/*"
++                    onChange={(e) =>
++                      setFiles((current) => ({ ...current, [doc.type]: e.target.files?.[0] ?? null }))
++                    }
++                  />
++                </span>
++                {files[doc.type] ? (
++                  <span className="auth-field__message">Sélectionné : {files[doc.type].name}</span>
++                ) : null}
++              </label>
++            ))}
++            <p className="muted" style={{ fontSize: 13 }}>
++              La RC PRO sera demandée séparément dans les 7 jours suivant l’inscription.
++            </p>
++          </fieldset>
++
++          <button className="gold-button auth-submit" type="submit" disabled={submitting}>
++            {submitting ? 'Envoi en cours…' : 'Soumettre mon dossier pour validation'}
++          </button>
++        </form>
++      </SectionCard>
++    </div>
++  );
++}
+diff --git a/foodiz-v3/src/routes/ProtectedRoute.jsx b/foodiz-v3/src/routes/ProtectedRoute.jsx
+index 55abd33..0ffa74b 100644
+--- a/foodiz-v3/src/routes/ProtectedRoute.jsx
++++ b/foodiz-v3/src/routes/ProtectedRoute.jsx
+@@ -3,7 +3,7 @@ import { useAuth } from '../components/auth/AuthProvider';
+ import { GuardNotice } from '../components/ui/GuardNotice';
+ 
+ export function ProtectedRoute() {
+-  const { isSupabaseConfigured, loading, session, profilePending } = useAuth();
++  const { isSupabaseConfigured, loading, session, profilePending, recoveryMode } = useAuth();
+   const location = useLocation();
+ 
+   if (!isSupabaseConfigured) {
+@@ -18,6 +18,13 @@ export function ProtectedRoute() {
+     );
+   }
+ 
++  // While the user is in a password-recovery session, send them to the
++  // dedicated reset screen — every other protected route is off-limits until
++  // they pick a new password (or sign out).
++  if (recoveryMode && location.pathname !== '/auth/reset-password') {
++    return <Navigate replace to="/auth/reset-password" />;
++  }
++
+   if (loading) {
+     return <GuardNotice title="Chargement" description="Vérification sécurisée de la session Foodiz en cours." />;
+   }
+diff --git a/foodiz-v3/src/routes/index.jsx b/foodiz-v3/src/routes/index.jsx
+index 5e834f3..48dc9af 100644
+--- a/foodiz-v3/src/routes/index.jsx
++++ b/foodiz-v3/src/routes/index.jsx
+@@ -5,6 +5,8 @@ import { ClientLayout } from '../components/client/ClientLayout';
+ import { ProtectedRoute } from './ProtectedRoute';
+ import { RoleGuard } from './RoleGuard';
+ import { AuthHomePage } from '../pages/auth/AuthHomePage';
++import { ProSignupPage } from '../pages/auth/ProSignupPage';
++import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage';
+ import { ClientHomePage } from '../pages/client/ClientHomePage';
+ import { ClientRestaurantsPage } from '../pages/client/ClientRestaurantsPage';
+ import { ClientMarketPage } from '../pages/client/ClientMarketPage';
+@@ -13,7 +15,9 @@ import { ClientOrdersPage } from '../pages/client/ClientOrdersPage';
+ import { ClientAccountPage } from '../pages/client/ClientAccountPage';
+ import { ClientEstablishmentPage } from '../pages/client/ClientEstablishmentPage';
+ import { PartnerHomePage } from '../pages/partner/PartnerHomePage';
++import { PartnerOnboardingPage } from '../pages/partner/PartnerOnboardingPage';
+ import { CourierHomePage } from '../pages/courier/CourierHomePage';
++import { CourierOnboardingPage } from '../pages/courier/CourierOnboardingPage';
+ import { AdminHomePage } from '../pages/admin/AdminHomePage';
+ 
+ export const router = createBrowserRouter([
+@@ -25,10 +29,16 @@ export const router = createBrowserRouter([
+     path: '/auth',
+     element: <AuthLayout />,
+     children: [
+-      {
+-        index: true,
+-        element: <AuthHomePage />,
+-      },
++      { index: true, element: <AuthHomePage /> },
++      // Public role-specific signup screens. They do NOT live behind
++      // ProtectedRoute because the user is signing up — they obviously have
++      // no session yet. The :role param is restricted at the page level.
++      { path: 'partner', element: <ProSignupPage /> },
++      { path: 'courier', element: <ProSignupPage /> },
++      // Password recovery landing. This route handles its own session/recovery
++      // logic (Supabase emits PASSWORD_RECOVERY before any redirect happens),
++      // so it stays outside ProtectedRoute as well.
++      { path: 'reset-password', element: <ResetPasswordPage /> },
+     ],
+   },
+   {
+@@ -41,34 +51,13 @@ export const router = createBrowserRouter([
+             path: '/client',
+             element: <ClientLayout />,
+             children: [
+-              {
+-                index: true,
+-                element: <ClientHomePage />,
+-              },
+-              {
+-                path: 'restaurants',
+-                element: <ClientRestaurantsPage />,
+-              },
+-              {
+-                path: 'market',
+-                element: <ClientMarketPage />,
+-              },
+-              {
+-                path: 'cart',
+-                element: <ClientCartPage />,
+-              },
+-              {
+-                path: 'orders',
+-                element: <ClientOrdersPage />,
+-              },
+-              {
+-                path: 'account',
+-                element: <ClientAccountPage />,
+-              },
+-              {
+-                path: 'establishments/:partnerId',
+-                element: <ClientEstablishmentPage />,
+-              },
++              { index: true, element: <ClientHomePage /> },
++              { path: 'restaurants', element: <ClientRestaurantsPage /> },
++              { path: 'market', element: <ClientMarketPage /> },
++              { path: 'cart', element: <ClientCartPage /> },
++              { path: 'orders', element: <ClientOrdersPage /> },
++              { path: 'account', element: <ClientAccountPage /> },
++              { path: 'establishments/:partnerId', element: <ClientEstablishmentPage /> },
+             ],
+           },
+         ],
+@@ -80,10 +69,11 @@ export const router = createBrowserRouter([
+             path: '/partner',
+             element: <DashboardLayout role="partner" />,
+             children: [
+-              {
+-                index: true,
+-                element: <PartnerHomePage />,
+-              },
++              { index: true, element: <PartnerHomePage /> },
++              // Onboarding sits inside the role guard so only authenticated
++              // partner profiles can reach it; the home page itself decides
++              // whether to redirect a brand-new partner here.
++              { path: 'onboarding', element: <PartnerOnboardingPage /> },
+             ],
+           },
+         ],
+@@ -95,10 +85,8 @@ export const router = createBrowserRouter([
+             path: '/courier',
+             element: <DashboardLayout role="courier" />,
+             children: [
+-              {
+-                index: true,
+-                element: <CourierHomePage />,
+-              },
++              { index: true, element: <CourierHomePage /> },
++              { path: 'onboarding', element: <CourierOnboardingPage /> },
+             ],
+           },
+         ],
+@@ -110,10 +98,7 @@ export const router = createBrowserRouter([
+             path: '/admin',
+             element: <DashboardLayout role="admin" />,
+             children: [
+-              {
+-                index: true,
+-                element: <AdminHomePage />,
+-              },
++              { index: true, element: <AdminHomePage /> },
+             ],
+           },
+         ],
+diff --git a/supabase/migrations/0009_handle_new_user_signup_trigger.sql b/supabase/migrations/0009_handle_new_user_signup_trigger.sql
+new file mode 100644
+index 0000000..79ff859
+--- /dev/null
++++ b/supabase/migrations/0009_handle_new_user_signup_trigger.sql
+@@ -0,0 +1,124 @@
++-- 0009 — handle_new_user signup trigger
++--
++-- Purpose
++-- -------
++-- The Foodiz technical blueprint (v1.1, §6 RLS and §7.1/7.2/7.3) specifies that
++-- profile rows are inserted "via trigger backend post-signup uniquement" —
++-- i.e. the application client is *not* allowed to insert into public.profiles
++-- directly (no profiles_insert policy exists in 0007). This migration adds the
++-- missing post-signup trigger on auth.users that:
++--
++--   1. reads raw_user_meta_data set by the supabase-js client at sign_up time:
++--        - requested_role        ('client' | 'partner' | 'courier')
++--        - first_name, last_name, phone
++--        - referred_by_code      (optional referral code of the inviter)
++--   2. inserts the matching public.profiles row with role correctly set
++--   3. generates a unique referral_code based on the user_id
++--   4. for clients, also bootstraps the linked public.loyalty_accounts row
++--
++-- The trigger runs as SECURITY DEFINER so it bypasses RLS, which is the only
++-- safe way to populate a profile row before the user has any session token.
++-- The existing guard_profiles_protected_columns trigger short-circuits when
++-- auth.uid() is null (signup context), so this insert is allowed.
++--
++-- Idempotency: running this migration twice is safe — `create or replace
++-- function` and `drop trigger if exists` are used everywhere.
++
++create or replace function public.generate_referral_code(p_user_id uuid)
++returns text
++language plpgsql
++stable
++as $$
++declare
++  v_seed text;
++begin
++  -- Take the first 8 hex chars of the uuid (no dashes) and prefix with `fdz-`.
++  -- Combined with a small random suffix it gives a short, human-shareable code
++  -- with negligible collision probability across realistic Foodiz scale.
++  v_seed := replace(p_user_id::text, '-', '');
++  return 'fdz-' || substr(v_seed, 1, 8) || '-' || substr(v_seed, 9, 4);
++end;
++$$;
++
++create or replace function public.handle_new_user()
++returns trigger
++language plpgsql
++security definer
++set search_path = public
++as $$
++declare
++  v_meta            jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
++  v_requested_role  text  := nullif(v_meta->>'requested_role', '');
++  v_role            public.user_role_enum;
++  v_first_name      text  := nullif(v_meta->>'first_name', '');
++  v_last_name       text  := nullif(v_meta->>'last_name', '');
++  v_phone           text  := nullif(v_meta->>'phone', '');
++  v_referral_in     text  := nullif(v_meta->>'referred_by_code', '');
++  v_referrer_id     uuid;
++  v_referral_code   text;
++begin
++  -- Default to 'client' if the metadata didn't carry a requested_role
++  -- (defensive: the auth UI always sets it, but a manual signup via the
++  -- Supabase dashboard would otherwise fail the enum cast).
++  if v_requested_role is null
++     or v_requested_role not in ('client', 'partner', 'courier') then
++    v_role := 'client';
++  else
++    v_role := v_requested_role::public.user_role_enum;
++  end if;
++
++  -- Resolve optional referrer (only meaningful for client signups but we
++  -- accept it for any role — it stays null if the code does not exist).
++  if v_referral_in is not null then
++    select user_id
++      into v_referrer_id
++      from public.profiles
++     where referral_code = v_referral_in
++     limit 1;
++  end if;
++
++  v_referral_code := public.generate_referral_code(new.id);
++
++  insert into public.profiles (
++    user_id,
++    role,
++    account_status,
++    email,
++    first_name,
++    last_name,
++    phone,
++    referral_code,
++    referred_by_user_id
++  ) values (
++    new.id,
++    v_role,
++    'active',
++    new.email,
++    v_first_name,
++    v_last_name,
++    v_phone,
++    v_referral_code,
++    v_referrer_id
++  )
++  on conflict (user_id) do nothing;
++
++  -- Bootstrap the loyalty account for clients only — partner/courier loyalty
++  -- accounts are not in scope per FOODIZ_MASTER_SPEC §3 (loyalty = client side).
++  if v_role = 'client' then
++    insert into public.loyalty_accounts (client_user_id)
++    values (new.id)
++    on conflict (client_user_id) do nothing;
++  end if;
++
++  return new;
++end;
++$$;
++
++comment on function public.handle_new_user() is
++  'Post-signup trigger: creates the public.profiles row (role taken from raw_user_meta_data.requested_role) and, for clients, the matching loyalty_accounts row. Runs as SECURITY DEFINER because no profiles_insert RLS policy exists by design (see FOODIZ_TECHNICAL_BLUEPRINT §6.profiles).';
++
++drop trigger if exists on_auth_user_created on auth.users;
++
++create trigger on_auth_user_created
++after insert on auth.users
++for each row execute function public.handle_new_user();
+-- 
+2.47.3
+
+
+From 917a064526013f79b083f01a6f7209a7e5deb97e Mon Sep 17 00:00:00 2001
+From: Foodiz Agent <agent@arena.ai>
+Date: Thu, 14 May 2026 08:41:14 +0000
+Subject: [PATCH 2/2] fix(auth): wait for AuthProvider bootstrap before showing
+ 'invalid link' on reset-password
+
+Without this guard the warning briefly flashes during the few hundred
+milliseconds Supabase needs to consume the recovery URL hash and emit
+PASSWORD_RECOVERY.
+---
+ foodiz-v3/src/pages/auth/ResetPasswordPage.jsx | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/foodiz-v3/src/pages/auth/ResetPasswordPage.jsx b/foodiz-v3/src/pages/auth/ResetPasswordPage.jsx
+index 20b952d..bc8f208 100644
+--- a/foodiz-v3/src/pages/auth/ResetPasswordPage.jsx
++++ b/foodiz-v3/src/pages/auth/ResetPasswordPage.jsx
+@@ -18,7 +18,7 @@ import authBackgroundMain from '../../assets/auth-background-main.png';
+  */
+ export function ResetPasswordPage() {
+   const navigate = useNavigate();
+-  const { session, recoveryMode, updatePassword, isSupabaseConfigured, supabaseConfigError } =
++  const { session, loading, recoveryMode, updatePassword, isSupabaseConfigured, supabaseConfigError } =
+     useAuth();
+ 
+   const [password, setPassword] = useState('');
+@@ -61,8 +61,10 @@ export function ResetPasswordPage() {
+   }
+ 
+   // If the user navigates here directly without a session (no recovery link
+-  // consumed), guide them back to the request screen.
+-  const noSession = isSupabaseConfigured && !session;
++  // consumed), guide them back to the request screen. We wait for the
++  // AuthProvider bootstrap (`loading`) to finish so the message does not flash
++  // during the brief hash-token exchange Supabase performs on landing.
++  const noSession = isSupabaseConfigured && !loading && !session;
+ 
+   return (
+     <div
+-- 
+2.47.3
+

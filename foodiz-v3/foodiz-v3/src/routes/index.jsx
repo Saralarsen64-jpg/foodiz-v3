@@ -5,6 +5,8 @@ import { ClientLayout } from '../components/client/ClientLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RoleGuard } from './RoleGuard';
 import { AuthHomePage } from '../pages/auth/AuthHomePage';
+import { ProSignupPage } from '../pages/auth/ProSignupPage';
+import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage';
 import { ClientHomePage } from '../pages/client/ClientHomePage';
 import { ClientRestaurantsPage } from '../pages/client/ClientRestaurantsPage';
 import { ClientMarketPage } from '../pages/client/ClientMarketPage';
@@ -13,7 +15,9 @@ import { ClientOrdersPage } from '../pages/client/ClientOrdersPage';
 import { ClientAccountPage } from '../pages/client/ClientAccountPage';
 import { ClientEstablishmentPage } from '../pages/client/ClientEstablishmentPage';
 import { PartnerHomePage } from '../pages/partner/PartnerHomePage';
+import { PartnerOnboardingPage } from '../pages/partner/PartnerOnboardingPage';
 import { CourierHomePage } from '../pages/courier/CourierHomePage';
+import { CourierOnboardingPage } from '../pages/courier/CourierOnboardingPage';
 import { AdminHomePage } from '../pages/admin/AdminHomePage';
 
 export const router = createBrowserRouter([
@@ -25,10 +29,16 @@ export const router = createBrowserRouter([
     path: '/auth',
     element: <AuthLayout />,
     children: [
-      {
-        index: true,
-        element: <AuthHomePage />,
-      },
+      { index: true, element: <AuthHomePage /> },
+      // Public role-specific signup screens. They do NOT live behind
+      // ProtectedRoute because the user is signing up — they obviously have
+      // no session yet. The :role param is restricted at the page level.
+      { path: 'partner', element: <ProSignupPage /> },
+      { path: 'courier', element: <ProSignupPage /> },
+      // Password recovery landing. This route handles its own session/recovery
+      // logic (Supabase emits PASSWORD_RECOVERY before any redirect happens),
+      // so it stays outside ProtectedRoute as well.
+      { path: 'reset-password', element: <ResetPasswordPage /> },
     ],
   },
   {
@@ -41,34 +51,13 @@ export const router = createBrowserRouter([
             path: '/client',
             element: <ClientLayout />,
             children: [
-              {
-                index: true,
-                element: <ClientHomePage />,
-              },
-              {
-                path: 'restaurants',
-                element: <ClientRestaurantsPage />,
-              },
-              {
-                path: 'market',
-                element: <ClientMarketPage />,
-              },
-              {
-                path: 'cart',
-                element: <ClientCartPage />,
-              },
-              {
-                path: 'orders',
-                element: <ClientOrdersPage />,
-              },
-              {
-                path: 'account',
-                element: <ClientAccountPage />,
-              },
-              {
-                path: 'establishments/:partnerId',
-                element: <ClientEstablishmentPage />,
-              },
+              { index: true, element: <ClientHomePage /> },
+              { path: 'restaurants', element: <ClientRestaurantsPage /> },
+              { path: 'market', element: <ClientMarketPage /> },
+              { path: 'cart', element: <ClientCartPage /> },
+              { path: 'orders', element: <ClientOrdersPage /> },
+              { path: 'account', element: <ClientAccountPage /> },
+              { path: 'establishments/:partnerId', element: <ClientEstablishmentPage /> },
             ],
           },
         ],
@@ -80,10 +69,11 @@ export const router = createBrowserRouter([
             path: '/partner',
             element: <DashboardLayout role="partner" />,
             children: [
-              {
-                index: true,
-                element: <PartnerHomePage />,
-              },
+              { index: true, element: <PartnerHomePage /> },
+              // Onboarding sits inside the role guard so only authenticated
+              // partner profiles can reach it; the home page itself decides
+              // whether to redirect a brand-new partner here.
+              { path: 'onboarding', element: <PartnerOnboardingPage /> },
             ],
           },
         ],
@@ -95,10 +85,8 @@ export const router = createBrowserRouter([
             path: '/courier',
             element: <DashboardLayout role="courier" />,
             children: [
-              {
-                index: true,
-                element: <CourierHomePage />,
-              },
+              { index: true, element: <CourierHomePage /> },
+              { path: 'onboarding', element: <CourierOnboardingPage /> },
             ],
           },
         ],
@@ -110,10 +98,7 @@ export const router = createBrowserRouter([
             path: '/admin',
             element: <DashboardLayout role="admin" />,
             children: [
-              {
-                index: true,
-                element: <AdminHomePage />,
-              },
+              { index: true, element: <AdminHomePage /> },
             ],
           },
         ],

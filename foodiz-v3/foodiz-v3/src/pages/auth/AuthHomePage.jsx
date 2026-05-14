@@ -61,6 +61,7 @@ export function AuthHomePage() {
     profile,
     loading,
     profilePending,
+    recoveryMode,
     isSupabaseConfigured,
     supabaseConfigError,
     signIn,
@@ -79,10 +80,14 @@ export function AuthHomePage() {
   const [proMessage, setProMessage] = useState('');
 
   useEffect(() => {
+    if (recoveryMode) {
+      navigate('/auth/reset-password', { replace: true });
+      return;
+    }
     if (session && profile?.role) {
       navigate(getRoleHomePath(profile.role), { replace: true });
     }
-  }, [session, profile, navigate, getRoleHomePath]);
+  }, [recoveryMode, session, profile, navigate, getRoleHomePath]);
 
   const footerFeatures = useMemo(
     () => [
@@ -155,13 +160,18 @@ export function AuthHomePage() {
     setSubmitting(false);
   }
 
-  function handleProfessionalAction(type) {
+  function handleProfessionalAction(role, type) {
+    // Pro accounts have dedicated signup pages so we can collect the
+    // role-specific business info (establishment, documents, validation)
+    // right after Supabase auth signup, without polluting the client-only
+    // login form on this page.
     if (type === 'signup') {
-      setProMessage('Demande d’accès bientôt disponible — validation admin requise.');
+      navigate(`/auth/${role}`);
       return;
     }
-
-    setProMessage('Accès professionnel bientôt disponible.');
+    // For login, the same /auth screen handles every role (RoleGuard then
+    // routes the user to the correct home). We just clear the pro hint.
+    setProMessage('Connectez-vous ci-dessus avec vos identifiants professionnels.');
   }
 
   const isBusy = loading || submitting;
@@ -433,8 +443,8 @@ export function AuthHomePage() {
               text="Faites découvrir vos meilleures offres aux clients de votre ville."
               primaryLabel="S’inscrire"
               secondaryLabel="Se connecter"
-              onPrimary={() => handleProfessionalAction('signup')}
-              onSecondary={() => handleProfessionalAction('login')}
+              onPrimary={() => handleProfessionalAction('partner', 'signup')}
+              onSecondary={() => handleProfessionalAction('partner', 'login')}
             />
             <ProfessionalAccessCard
               variant="courier"
@@ -444,8 +454,8 @@ export function AuthHomePage() {
               text="Rejoignez une expérience de livraison plus premium, plus claire, mieux pilotée."
               primaryLabel="S’inscrire"
               secondaryLabel="Se connecter"
-              onPrimary={() => handleProfessionalAction('signup')}
-              onSecondary={() => handleProfessionalAction('login')}
+              onPrimary={() => handleProfessionalAction('courier', 'signup')}
+              onSecondary={() => handleProfessionalAction('courier', 'login')}
             />
           </div>
 

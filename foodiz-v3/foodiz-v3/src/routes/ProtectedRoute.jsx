@@ -3,7 +3,7 @@ import { useAuth } from '../components/auth/AuthProvider';
 import { GuardNotice } from '../components/ui/GuardNotice';
 
 export function ProtectedRoute() {
-  const { isSupabaseConfigured, loading, session, profilePending } = useAuth();
+  const { isSupabaseConfigured, loading, session, profilePending, recoveryMode } = useAuth();
   const location = useLocation();
 
   if (!isSupabaseConfigured) {
@@ -16,6 +16,13 @@ export function ProtectedRoute() {
         <Outlet />
       </>
     );
+  }
+
+  // While the user is in a password-recovery session, send them to the
+  // dedicated reset screen — every other protected route is off-limits until
+  // they pick a new password (or sign out).
+  if (recoveryMode && location.pathname !== '/auth/reset-password') {
+    return <Navigate replace to="/auth/reset-password" />;
   }
 
   if (loading) {
