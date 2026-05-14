@@ -90,6 +90,7 @@ export function AuthProvider({ children }) {
     if (mountedRef.current) {
       setSession(nextSession);
       setLoading(true);
+      setLoading(false);
     }
 
     const fetched = await fetchProfileWithRetry(nextSession.user.id);
