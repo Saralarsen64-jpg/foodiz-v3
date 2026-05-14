@@ -210,12 +210,12 @@ export function AuthHomePage() {
             </div>
           ) : null}
 
-          {profilePending ? (
-            <div className="auth-feedback auth-feedback--warning">
-              <strong>Votre profil est en cours de préparation.</strong>
-              <span>Votre compte existe bien, mais votre profil Foodiz n’est pas encore finalisé.</span>
-            </div>
-          ) : null}
+          {profilePending && !(profile?.role === 'client' && profile?.account_status === 'active') ? (
+  <div className="auth-feedback auth-feedback--warning">
+    <strong>Votre profil est en cours de préparation.</strong>
+    <span>Votre compte existe bien, mais votre profil Foodiz n’est pas encore finalisé.</span>
+  </div>
+) : null}
 
           <div className="auth-mode-toggle" role="tablist" aria-label="Mode authentification Foodiz">
             <button
